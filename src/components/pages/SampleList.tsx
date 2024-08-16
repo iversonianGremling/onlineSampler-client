@@ -6,10 +6,7 @@ interface ApiResponseItem {
   artist: string;
   bpm: number;
   duration: number;
-  tags: string[]; //TODO: Tags should be represented by buttons of different colors. You should be able to perform a search of several tags and
-  //Put them together and should have a visual representation of it right below the search bar, same for artists, name...etc
-  //TODO: Add a select checkbox to delete/download in pack
-  //TODO: Put the play button at the left of the waveform
+  tags: string[];
   //TODO: Menu to organize by folders
 }
 
