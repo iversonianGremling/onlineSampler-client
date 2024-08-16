@@ -3,6 +3,7 @@ import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import "./NavBar.css"; // We'll create this file in the next step
 
 const Navbar = () => {
+  //TODO: Add an upload button
   const navigate = useNavigate();
   const location = useLocation();
   return (
