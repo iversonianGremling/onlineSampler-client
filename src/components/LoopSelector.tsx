@@ -3,9 +3,16 @@ import React, { useState, useRef, useEffect } from "react";
 interface AboutProps {
   startPosition: number;
   endPosition: number;
+  width: string;
+  height: string;
 }
 
-const About: React.FC<AboutProps> = ({ startPosition, endPosition }) => {
+const LoopSelector: React.FC<AboutProps> = ({
+  startPosition,
+  endPosition,
+  height,
+  width,
+}) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
   const elementWidth = 50; // Width of the inner element
@@ -98,6 +105,11 @@ const About: React.FC<AboutProps> = ({ startPosition, endPosition }) => {
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
+      style={{
+        width: `${width}`,
+        height: `${height}`,
+        overflow: "hidden",
+      }}
     >
       {/* First Div */}
       <div
@@ -132,4 +144,4 @@ const About: React.FC<AboutProps> = ({ startPosition, endPosition }) => {
   );
 };
 
-export default About;
+export default LoopSelector;
