@@ -1,5 +1,11 @@
 import { useState, useMemo } from "react";
 
+import FileUpload from "../FileUpload";
+import MetadataEditor from "../MetadataEditor";
+import AudioPlayer from "../AudioPlayer";
+import Waveform from "../Waveform";
+import SearchTerm from "../SearchTerm";
+
 interface ApiResponseItem {
   id: number;
   title: string;
@@ -107,7 +113,7 @@ const SampleList = () => {
     bpm: "",
     tags: "",
   });
-  const [searchTags, setSearchTags] = useState<string[]>(["drum", "synth"]);
+  const [searchTerms, setSearchTerms] = useState<string[]>(["drum", "synth"]);
   const [playingElementId, setPlayingElementId] = useState(0);
 
   const handleSort = (column: keyof Omit<ApiResponseItem, "tags">) => {
@@ -171,29 +177,44 @@ const SampleList = () => {
     };
   };
 
-  const handlePlayClick = (elementId: number) => {
-    if (playingElementId === elementId) {
-      // If the clicked element is already playing, pause it
-      setPlayingElementId(0);
-    } else {
-      // Otherwise, play the clicked element and pause any other playing element
-      setPlayingElementId(elementId);
-    }
-  };
-
-  const handleAddTag = (tag: string) => {
-    setSearchTags([...searchTags, tag]);
-  };
-  const handleRemoveTag = (tag: string) => {
-    setSearchTags(searchTags.filter((t) => t !== tag));
-  };
-
   const editSampleById = (id: number) => {};
   const editSampleMetadataById = (id: number) => {};
 
   const downloadSampleById = (id: number) => {};
 
   const deleteSampleById = (id: number) => {};
+
+  const handleAddArtist = (artist: string) => {
+    setSearchTerms([...searchTerms, "a/" + artist]);
+  };
+
+  const handleRemoveArtist = (artist: string) => {
+    setSearchTerms(searchTerms.filter((a) => a !== artist));
+    console.log(artist);
+  };
+
+  const handleAddBPM = (bpm: string) => {
+    setSearchTerms([...searchTerms, "b/" + bpm]);
+  };
+
+  const handleRemoveBPM = (bpm: string) => {
+    setSearchTerms(searchTerms.filter((b) => b !== bpm));
+  };
+
+  const handleAddDuration = (duration: string) => {
+    setSearchTerms([...searchTerms, "d/" + duration]);
+  };
+
+  const handleRemoveDuration = (duration: string) => {
+    setSearchTerms(searchTerms.filter((d) => d !== duration));
+  };
+
+  const handleAddTag = (tag: string) => {
+    setSearchTerms([...searchTerms, "t/" + tag]);
+  };
+  const handleRemoveTag = (tag: string) => {
+    setSearchTerms(searchTerms.filter((t) => t !== tag));
+  };
 
   return (
     <div>
@@ -248,22 +269,39 @@ const SampleList = () => {
         <button onClick={handleAdvancedSearch}>Advanced Search</button>
       </div>
       <div className="flex flex-wrap gap-2">
-        {searchTags.map((tag, index) => (
-          <span
-            key={index}
-            className="bg-gray-100 py-2 px-4 rounded-full flex items-center gap-2"
-          >
-            <i className="fas fa-tag text-gray-400" />
-            {tag}
-            <i
-              className="fas fa-times text-gray-600 cursor-pointer hover:text-red-500"
-              onClick={() => handleRemoveTag(tag)}
+        {searchTerms.map((tag, index) =>
+          tag.split("/")[0] === "a" ? (
+            <SearchTerm
+              tag={tag}
+              index={index}
+              deleteFunction={handleRemoveArtist}
             />
-          </span>
-        ))}
+          ) : tag.split("/")[0] === "b" ? (
+            <SearchTerm
+              tag={tag}
+              index={index}
+              deleteFunction={handleRemoveBPM}
+            />
+          ) : tag.split("/")[0] === "d" ? (
+            <SearchTerm
+              tag={tag}
+              index={index}
+              deleteFunction={handleRemoveDuration}
+            />
+          ) : tag.split("/")[0] === "t" ? (
+            <SearchTerm
+              tag={tag}
+              index={index}
+              deleteFunction={handleRemoveTag}
+            />
+          ) : null
+        )}
       </div>
 
-      <div style={{ height: "300px", overflow: "auto" }}>
+      <div
+        className="overflow-x-auto"
+        style={{ overflow: "auto", height: "70vh" }}
+      >
         <table>
           <thead>
             <tr>
@@ -326,9 +364,15 @@ const SampleList = () => {
                   <input type="checkbox" />
                 </td>
                 <td className="p-2 pl-3">{item.title}</td>
-                <td>{item.artist}</td>
-                <td>{item.bpm}</td>
-                <td>{item.duration}</td>
+                <td onClick={() => handleAddArtist(item.artist)}>
+                  {item.artist}
+                </td>
+                <td onClick={() => handleAddBPM(item.bpm.toString())}>
+                  {item.bpm}
+                </td>
+                <td onClick={() => handleAddDuration(item.duration.toString())}>
+                  {item.duration}
+                </td>
                 <td className="flex items-center flex-wrap">
                   {item.tags.map((tag, index) => (
                     <span
@@ -343,27 +387,24 @@ const SampleList = () => {
                 </td>
                 <td>
                   <div className="ml-2 flex items-center">
-                    <button onClick={() => handlePlayClick(item.id)}>
-                      {playingElementId == item.id ? (
-                        <i className="fas fa-pause m-1"></i>
-                      ) : (
-                        <i className="fas fa-play m-1"></i>
-                      )}
-                    </button>
-                    <button
-                      onClick={() =>
-                        playingElementId === item.id
-                          ? setPlayingElementId(0)
-                          : null
-                      }
-                    >
-                      <i className="fas fa-square m-1"></i>
-                    </button>
-                    <div className="bg-zinc-800 w-80 h-6"></div>
-                    <button>
-                      <i className="fas fa-redo m-1"></i>
-                    </button>
+                    <AudioPlayer fileUrl={""} />
+                    {/* <AudioPlayer fileUrl={item.url} /> */}
                   </div>
+                </td>
+                <td>
+                  <button onClick={() => editSampleMetadataById(item.id)}>
+                    <i className="fas fa-pencil-alt m-2"></i>
+                  </button>
+                </td>
+                <td>
+                  <button onClick={() => deleteSampleById(item.id)}>
+                    <i className="fas fa-trash m-2"></i>
+                  </button>
+                </td>
+                <td>
+                  <button onClick={() => downloadSampleById(item.id)}>
+                    <i className="fas fa-download m-2"></i>
+                  </button>
                 </td>
                 <td>
                   <button
@@ -373,26 +414,12 @@ const SampleList = () => {
                     Edit sample
                   </button>
                 </td>
-                <td>
-                  <button onClick={() => editSampleMetadataById(item.id)}>
-                    <i className="fas fa-pencil-alt"></i>
-                  </button>
-                </td>
-                <td>
-                  <button onClick={() => deleteSampleById(item.id)}>
-                    <i className="fas fa-trash"></i>
-                  </button>
-                </td>
-                <td>
-                  <button onClick={() => downloadSampleById(item.id)}>
-                    <i className="fas fa-download"></i>
-                  </button>
-                </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+      <FileUpload />
     </div>
   );
 };

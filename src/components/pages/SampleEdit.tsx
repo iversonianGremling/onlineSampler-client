@@ -1,5 +1,6 @@
 import { FaPlay, FaStop, FaRedo } from "react-icons/fa";
 import { useRef, useState, useEffect } from "react";
+import Waveform from "../Waveform";
 import LoopSelector from "../LoopSelector";
 import WindowSelector from "../WindowSelector";
 
@@ -14,6 +15,8 @@ const SampleEdit = () => {
   const speedKnobRef = useRef<HTMLDivElement | null>(null);
   const pitchKnobRef = useRef<HTMLDivElement | null>(null);
   const sampleSliceRef = useRef<HTMLDivElement | null>(null);
+  const fileUrl =
+    "https://file-examples.com/wp-content/uploads/2017/11/file_example_MP3_700KB.mp3";
 
   useEffect(() => {
     const handleKnobDrag = (
@@ -153,7 +156,7 @@ const SampleEdit = () => {
               />
             </div>
 
-            <img src="http://placehold.it/800x300" alt="placeholder"></img>
+            <Waveform fileUrl={fileUrl} />
           </div>
           <div className="flex flex-row p-2">
             <button className="mx-2 hover:opacity-50 rounded-full m-2 -mt-12">
