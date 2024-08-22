@@ -15,7 +15,8 @@ const About: React.FC = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
 
-  axios.defaults.baseURL = "http://localhost:3000";
+  const baseURL = "http://localhost:3000";
+  axios.defaults.baseURL = baseURL;
 
   useEffect(() => {
     fetchAudioFiles();
@@ -106,11 +107,14 @@ const About: React.FC = () => {
 
   const handlePlayPause = (filename: string) => {
     if (audioRef.current) {
-      if (isPlaying && audioRef.current.src === `/audio/${filename}`) {
+      if (
+        isPlaying &&
+        audioRef.current.src === `${baseURL}/audio/${filename}`
+      ) {
         audioRef.current.pause();
         setIsPlaying(false);
       } else {
-        audioRef.current.src = `/audio/${filename}`;
+        audioRef.current.src = `${baseURL}/audio/${filename}`;
         audioRef.current.play();
         setIsPlaying(true);
       }
