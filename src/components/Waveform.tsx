@@ -16,6 +16,8 @@ const Waveform: React.FC<Props> = ({ fileUrl }) => {
   const [startPoint, setStartPoint] = useState(0);
   const [endPoint, setEndPoint] = useState(100);
 
+  //TODO: Add missing features
+  // https://wavesurfer.xyz/example/zoom/
   useEffect(() => {
     if (containerRef.current) {
       waveformRef.current = WaveSurfer.create({
@@ -57,6 +59,18 @@ const Waveform: React.FC<Props> = ({ fileUrl }) => {
       };
     }
   }, [fileUrl, isLooping, loopStart, loopEnd, endPoint]);
+
+  useEffect(() => {
+    if (waveformRef.current && containerRef.current) {
+      const duration = waveformRef.current.getDuration();
+      const start = (startPoint / 100) * duration;
+      const end = (endPoint / 100) * duration;
+      const pixelsPerSecond = containerRef.current.offsetWidth / duration;
+      const minPx = start * pixelsPerSecond;
+
+      containerRef.current.scrollLeft = minPx;
+    }
+  }, [startPoint, endPoint]);
 
   const handlePlayPause = () => {
     if (waveformRef.current) {
