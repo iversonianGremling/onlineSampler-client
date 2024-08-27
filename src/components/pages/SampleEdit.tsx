@@ -1,10 +1,15 @@
-import { FaPlay, FaStop, FaRedo } from "react-icons/fa";
+import { FaPlay, FaStop, FaRedo, FaPause } from "react-icons/fa";
 import { useRef, useState, useEffect } from "react";
 import Waveform from "../Waveform";
 import LoopSelector from "../LoopSelector";
 import WindowSelector from "../WindowSelector";
+import axios from "axios";
 
-const SampleEdit = () => {
+interface SampleEditProps {
+  filename: string;
+}
+
+const SampleEdit = ({ filename }: SampleEditProps) => {
   const [speedValue, setSpeedValue] = useState<number>(50);
   const [pitchValue, setPitchValue] = useState<number>(50);
   const [windowPosition, setWindowPosition] = useState<number>(0);
@@ -15,10 +20,19 @@ const SampleEdit = () => {
   const speedKnobRef = useRef<HTMLDivElement | null>(null);
   const pitchKnobRef = useRef<HTMLDivElement | null>(null);
   const sampleSliceRef = useRef<HTMLDivElement | null>(null);
-  const fileUrl =
-    "https://file-examples.com/wp-content/uploads/2017/11/file_example_MP3_700KB.mp3";
+
+  const [audioFile, setAudioFile] = useState<File | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [editedFile, setEditedFile] = useState<File | null>(null);
+  const [currentAudioTime, setCurrentAudioTime] = useState<number>(0);
+  filename = "Loopazon.mp3";
+
+  const baseURL = "http://localhost:3000";
+  axios.defaults.baseURL = baseURL;
 
   useEffect(() => {
+    fetchAudioFile();
     const handleKnobDrag = (
       event: MouseEvent,
       knobRef: React.RefObject<HTMLDivElement>,
@@ -124,7 +138,37 @@ const SampleEdit = () => {
         );
       }
     };
-  }, [speedValue, pitchValue, windowPosition, windowWidth]);
+  }, [speedValue, pitchValue, windowPosition, windowWidth, audioFile]);
+
+  const fetchAudioFile = async () => {
+    try {
+      const response = await axios.get(`${baseURL}/audio/${filename}`);
+      setAudioFile(response.data.file);
+    } catch (error) {
+      console.error("Error fetching file: ", error);
+    }
+  };
+
+  const handlePlayPause = (filename: string) => {
+    console.log("Trying to play/pause");
+    if (audioRef.current) {
+      if (
+        isPlaying &&
+        audioRef.current.src === `${baseURL}/audio/${filename}`
+      ) {
+        setCurrentAudioTime(audioRef.current.currentTime);
+        audioRef.current.pause();
+        setIsPlaying(false);
+      } else {
+        audioRef.current.src = `${baseURL}/audio/${filename}`;
+        audioRef.current.currentTime = currentAudioTime;
+        audioRef.current.play();
+        setIsPlaying(true);
+      }
+    } else {
+      console.log("No audio ref");
+    }
+  };
 
   // Calculate the rotation based on the value
   const calculateRotation = (value: number) => {
@@ -156,11 +200,26 @@ const SampleEdit = () => {
               />
             </div>
 
-            <Waveform fileUrl={fileUrl} />
+            {<Waveform fileUrl={`${baseURL}/audio/${filename}`} />}
           </div>
           <div className="flex flex-row p-2">
-            <button className="mx-2 hover:opacity-50 rounded-full m-2 -mt-12">
-              <FaPlay className="text-lg" />
+            <button
+              className="mx-2 hover:opacity-50 rounded-full m-2 -mt-12"
+              onClick={() => handlePlayPause(filename)}
+            >
+              {isPlaying &&
+              audioFile &&
+              audioRef.current?.src.includes(audioFile.name) ? (
+                <FaPause
+                  className="text-lg"
+                  onClick={() => handlePlayPause(filename)}
+                />
+              ) : (
+                <FaPlay
+                  className="text-lg"
+                  onClick={() => handlePlayPause(filename)}
+                />
+              )}
             </button>
             <button className="hover:opacity-50 rounded-full m-2 -mt-12">
               <FaStop className="text-lg" />
@@ -209,6 +268,7 @@ const SampleEdit = () => {
               </div>
             </div>
           </div>
+          <audio ref={audioRef} />
         </div>
       </div>
     </div>
