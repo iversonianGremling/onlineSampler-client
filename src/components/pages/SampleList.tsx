@@ -5,6 +5,8 @@ import MetadataEditor from "../MetadataEditor";
 import AudioPlayer from "../AudioPlayer";
 import Waveform from "../Waveform";
 import SearchTerm from "../SearchTerm";
+import { Table } from "@mui/material";
+import DataTable from "../DataTable";
 
 interface ApiResponseItem {
   id: number;
@@ -302,7 +304,7 @@ const SampleList = () => {
         className="overflow-x-auto"
         style={{ overflow: "auto", height: "70vh" }}
       >
-        <table>
+        <Table>
           <thead>
             <tr>
               <th>
@@ -417,8 +419,9 @@ const SampleList = () => {
               </tr>
             ))}
           </tbody>
-        </table>
+        </Table>
       </div>
+      <DataTable />
       <FileUpload />
     </div>
   );

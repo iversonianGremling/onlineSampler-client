@@ -1,25 +1,32 @@
 import React, { useState, useRef, useEffect } from "react";
 
 interface AboutProps {
-  startPosition: number;
-  endPosition: number;
+  initialStartPosition: number;
+  initialEndPosition: number;
+  setStartPosition: React.Dispatch<React.SetStateAction<number>>;
+  setEndPosition: React.Dispatch<React.SetStateAction<number>>;
   width: string;
   height: string;
+  containerRef: React.RefObject<HTMLDivElement>;
 }
 
 const LoopSelector: React.FC<AboutProps> = ({
-  startPosition,
-  endPosition,
+  initialStartPosition,
+  initialEndPosition,
+  setStartPosition,
+  setEndPosition,
   height,
   width,
+  containerRef,
 }) => {
-  const containerRef = useRef<HTMLDivElement>(null);
+  // const containerRef = useRef<HTMLDivElement>(null);
 
-  const elementWidth = 50; // Width of the inner element
-  const elementHeight = 130; // Height of the inner element
+  const elementWidth = 10; // Width of the inner element
+  const elementHeight = 50; // Height of the inner element
 
-  const [position1, setPosition1] = useState<number>(startPosition);
-  const [position2, setPosition2] = useState<number>(0); // Initialized later based on container width
+  const [startLoopPosition, setStartLoopPosition] =
+    useState<number>(initialStartPosition);
+  const [endLoopPosition, setEndLoopPosition] = useState<number>(0); // Initialized later based on container width
 
   const isDragging1 = useRef<boolean>(false);
   const isDragging2 = useRef<boolean>(false);
@@ -28,26 +35,32 @@ const LoopSelector: React.FC<AboutProps> = ({
   useEffect(() => {
     if (containerRef.current) {
       const containerWidth = containerRef.current.getBoundingClientRect().width;
-      setPosition2(containerWidth - elementWidth); // Set the second div at the end of the container
+      setEndLoopPosition(containerWidth - elementWidth); // Set the second div at the end of the container
     }
   }, []);
 
   // Update position1 when startPosition prop changes
   useEffect(() => {
-    setPosition1(startPosition);
-  }, [startPosition]);
+    setStartLoopPosition(initialStartPosition);
+    setStartPosition(initialStartPosition);
+  }, [initialStartPosition]);
 
   // Update position2 when endPosition prop changes
   useEffect(() => {
     if (containerRef.current) {
       const containerWidth = containerRef.current.getBoundingClientRect().width;
-      setPosition2(
-        endPosition <= containerWidth - elementWidth
-          ? endPosition
+      setEndLoopPosition(
+        initialEndPosition <= containerWidth - elementWidth
+          ? initialEndPosition
+          : containerWidth - elementWidth
+      );
+      setEndPosition(
+        initialEndPosition <= containerWidth - elementWidth
+          ? initialEndPosition
           : containerWidth - elementWidth
       );
     }
-  }, [endPosition]);
+  }, [initialEndPosition]);
 
   const handleMouseDown = (index: number) => {
     if (index === 1) {
@@ -72,28 +85,30 @@ const LoopSelector: React.FC<AboutProps> = ({
         let newPosition1 = event.clientX - containerRect.left;
 
         // Prevent the first div from passing through the second div
-        if (newPosition1 > position2 - elementWidth) {
-          newPosition1 = position2 - elementWidth;
+        if (newPosition1 > endLoopPosition - elementWidth) {
+          newPosition1 = endLoopPosition - elementWidth;
         }
 
         if (newPosition1 < 0) newPosition1 = 0;
 
-        setPosition1(newPosition1);
+        setStartLoopPosition(newPosition1);
+        setStartPosition(newPosition1);
       }
 
       if (isDragging2.current) {
         let newPosition2 = event.clientX - containerRect.left;
 
         // Prevent the second div from being passed through by the first div
-        if (newPosition2 < position1 + elementWidth) {
-          newPosition2 = position1 + elementWidth;
+        if (newPosition2 < startLoopPosition + elementWidth) {
+          newPosition2 = startLoopPosition + elementWidth;
         }
 
         if (newPosition2 > containerRect.width - elementWidth) {
           newPosition2 = containerRect.width - elementWidth;
         }
 
-        setPosition2(newPosition2);
+        setEndLoopPosition(newPosition2);
+        setEndPosition(newPosition2);
       }
     }
   };
@@ -117,7 +132,7 @@ const LoopSelector: React.FC<AboutProps> = ({
         style={{
           width: `${elementWidth}px`,
           height: `${elementHeight}px`,
-          left: `${position1}px`,
+          left: `${startLoopPosition}px`,
           cursor: "pointer",
         }}
         onMouseDown={(e) => {
@@ -132,7 +147,7 @@ const LoopSelector: React.FC<AboutProps> = ({
         style={{
           width: `${elementWidth}px`,
           height: `${elementHeight}px`,
-          left: `${position2}px`,
+          left: `${endLoopPosition}px`,
           cursor: "pointer",
         }}
         onMouseDown={(e) => {

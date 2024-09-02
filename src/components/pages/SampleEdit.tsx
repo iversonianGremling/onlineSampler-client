@@ -23,10 +23,16 @@ const SampleEdit = ({ filename }: SampleEditProps) => {
 
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const waveformRef = useRef<HTMLDivElement | null>(null);
+  const loopSelectorContainerRef = useRef<HTMLDivElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [editedFile, setEditedFile] = useState<File | null>(null);
   const [currentAudioTime, setCurrentAudioTime] = useState<number>(0);
+  const [loopStart, setLoopStart] = useState<number>(0);
+  const [loopEnd, setLoopEnd] = useState<number>(100);
   filename = "Loopazon.mp3";
+
+  const loopSelectorRef = useRef<HTMLDivElement>(null);
 
   const baseURL = "http://localhost:3000";
   axios.defaults.baseURL = baseURL;
@@ -172,7 +178,7 @@ const SampleEdit = ({ filename }: SampleEditProps) => {
 
   // Calculate the rotation based on the value
   const calculateRotation = (value: number) => {
-    return (value / 100) * 180 - 135; // Rotates from 225° (7:30) to 135° (5:30)
+    return ((value / 100) * 180 - 90) * 1.45; // Rotates from 225° (7:30) to 135° (5:30)
   };
 
   const getWindowLimits = ([start, end]: number[]) => {
@@ -180,95 +186,41 @@ const SampleEdit = ({ filename }: SampleEditProps) => {
   };
 
   return (
-    <div className="flex justify-left items-top h-screen w-screen">
-      <div className="flex flex-col items-center">
-        <div className="w-full h-full">
+    <div className="flex justify-center items-top h-screen w-screen">
+      <div
+        className="flex flex-col items-center "
+        style={{ width: "80%", height: "80%" }}
+      >
+        <div className="w-full h-5">
           <div>
-            <div className="relative w-full h-8">
+            {/* <div className="relative w-full h-8">
               <WindowSelector
                 onPositionChange={getWindowLimits}
                 start={windowStart}
                 end={windowEnd}
               />
-            </div>
-            <div className="relative w-full h-8">
+            </div> */}
+            <div className="relative w-full h-5" ref={loopSelectorContainerRef}>
               <LoopSelector
-                startPosition={0}
-                endPosition={100}
+                containerRef={loopSelectorRef}
+                initialStartPosition={loopStart}
+                initialEndPosition={loopEnd}
+                setStartPosition={setLoopStart}
+                setEndPosition={setLoopEnd}
                 width={"100%"}
                 height={"100%"}
               />
             </div>
 
-            {<Waveform fileUrl={`${baseURL}/audio/${filename}`} />}
+            {
+              <Waveform
+                waveformContainerRef={waveformRef}
+                fileUrl={`${baseURL}/audio/${filename}`}
+                loopStartPosition={loopStart / 3.32 / 1.029 / 4.21}
+                loopEndPosition={(loopEnd + 9) / 3.32 / 1.027 / 4.21 - 0.5}
+              />
+            }
           </div>
-          <div className="flex flex-row p-2">
-            <button
-              className="mx-2 hover:opacity-50 rounded-full m-2 -mt-12"
-              onClick={() => handlePlayPause(filename)}
-            >
-              {isPlaying &&
-              audioFile &&
-              audioRef.current?.src.includes(audioFile.name) ? (
-                <FaPause
-                  className="text-lg"
-                  onClick={() => handlePlayPause(filename)}
-                />
-              ) : (
-                <FaPlay
-                  className="text-lg"
-                  onClick={() => handlePlayPause(filename)}
-                />
-              )}
-            </button>
-            <button className="hover:opacity-50 rounded-full m-2 -mt-12">
-              <FaStop className="text-lg" />
-            </button>
-            <button className="hover:opacity-50 rounded-full m-2 -mt-12">
-              <FaRedo className="text-lg" />
-            </button>
-            <div className="mx-2 flex flex-col items-center">
-              <div className="mx-2 flex flex-col items-center">
-                <div
-                  ref={speedKnobRef}
-                  className="w-10 h-10  bg-gray-300 relative rounded-full"
-                  style={{
-                    transform: `rotate(${calculateRotation(speedValue)}deg)`,
-                  }}
-                >
-                  <div className="absolute top-0 left-1/2 transform  w-1 h-4 bg-gray-800 -translate-x-1/3" />
-                </div>
-                <span className="text-xs">{Math.round(speedValue)}% Speed</span>
-              </div>
-            </div>
-            <div className="mx-2 flex flex-col items-center">
-              <div
-                ref={pitchKnobRef}
-                className="w-10 h-10  bg-gray-300 relative rounded-full"
-                style={{
-                  transform: `rotate(${calculateRotation(pitchValue)}deg)`,
-                }}
-              >
-                <div className="absolute top-0 left-1/2 transform  w-1 h-4 bg-gray-800 -translate-x-1/3" />
-              </div>
-              <span className="text-xs">{Math.round(pitchValue)}% Pitch</span>
-            </div>
-            <div className="flex flex-col">
-              <p>Sample Name</p>
-              <div className="flex m-2">
-                <button className="bg-gray-200 hover:bg-gray-400 rounded-full p-2 m-3">
-                  Save
-                </button>
-                <button className="bg-gray-200 hover:bg-gray-400 rounded-full p-2 m-3">
-                  Save Copy
-                </button>
-                <button className="bg-gray-200 hover:bg-gray-400 rounded-full p-2 m-3">
-                  Download
-                </button>
-              </div>
-            </div>
-          </div>
-          <audio ref={audioRef} />
         </div>
       </div>
     </div>
