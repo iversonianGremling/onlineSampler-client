@@ -192,14 +192,7 @@ const SampleEdit = ({ filename }: SampleEditProps) => {
         style={{ width: "80%", height: "80%" }}
       >
         <div className="w-full h-5">
-          <div>
-            {/* <div className="relative w-full h-8">
-              <WindowSelector
-                onPositionChange={getWindowLimits}
-                start={windowStart}
-                end={windowEnd}
-              />
-            </div> */}
+          <div className="flex flex-col w-6/12">
             <div className="relative w-full h-5" ref={loopSelectorContainerRef}>
               <LoopSelector
                 containerRef={loopSelectorRef}
@@ -212,14 +205,16 @@ const SampleEdit = ({ filename }: SampleEditProps) => {
               />
             </div>
 
-            {
-              <Waveform
-                waveformContainerRef={waveformRef}
-                fileUrl={`${baseURL}/audio/${filename}`}
-                loopStartPosition={loopStart / 3.32 / 1.029 / 4.21}
-                loopEndPosition={(loopEnd + 9) / 3.32 / 1.027 / 4.21 - 0.5}
-              />
-            }
+            <div className="relative w-full ">
+              {
+                <Waveform
+                  waveformContainerRef={waveformRef}
+                  fileUrl={`${baseURL}/audio/${filename}`}
+                  loopStartPosition={loopStart}
+                  loopEndPosition={loopEnd + 9 - 0.5}
+                />
+              }
+            </div>
           </div>
         </div>
       </div>

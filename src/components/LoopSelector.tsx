@@ -19,10 +19,8 @@ const LoopSelector: React.FC<AboutProps> = ({
   width,
   containerRef,
 }) => {
-  // const containerRef = useRef<HTMLDivElement>(null);
-
   const elementWidth = 10; // Width of the inner element
-  const elementHeight = 50; // Height of the inner element
+  const elementHeight = 20; // Height of the inner element
 
   const [startLoopPosition, setStartLoopPosition] =
     useState<number>(initialStartPosition);
@@ -31,7 +29,7 @@ const LoopSelector: React.FC<AboutProps> = ({
   const isDragging1 = useRef<boolean>(false);
   const isDragging2 = useRef<boolean>(false);
 
-  // Set the initial position for position2 based on container width
+  // Set the initial position for endLoopPosition based on container width
   useEffect(() => {
     if (containerRef.current) {
       const containerWidth = containerRef.current.getBoundingClientRect().width;
@@ -39,13 +37,13 @@ const LoopSelector: React.FC<AboutProps> = ({
     }
   }, []);
 
-  // Update position1 when startPosition prop changes
+  // Update startLoopPosition when initialStartPosition prop changes
   useEffect(() => {
     setStartLoopPosition(initialStartPosition);
     setStartPosition(initialStartPosition);
   }, [initialStartPosition]);
 
-  // Update position2 when endPosition prop changes
+  // Update endLoopPosition when initialEndPosition prop changes
   useEffect(() => {
     if (containerRef.current) {
       const containerWidth = containerRef.current.getBoundingClientRect().width;
@@ -62,11 +60,23 @@ const LoopSelector: React.FC<AboutProps> = ({
     }
   }, [initialEndPosition]);
 
-  const handleMouseDown = (index: number) => {
-    if (index === 1) {
-      isDragging1.current = true;
-    } else {
-      isDragging2.current = true;
+  const handleMouseDown = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (containerRef.current) {
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const clickPosition = event.clientX - containerRect.left;
+
+      // Calculate distances to the start and end divs
+      const distanceToStart = Math.abs(clickPosition - startLoopPosition);
+      const distanceToEnd = Math.abs(clickPosition - endLoopPosition);
+
+      // Determine which div is closer and start dragging it
+      if (distanceToStart <= distanceToEnd) {
+        isDragging1.current = true;
+        moveStartDiv(clickPosition);
+      } else {
+        isDragging2.current = true;
+        moveEndDiv(clickPosition);
+      }
     }
   };
 
@@ -75,86 +85,97 @@ const LoopSelector: React.FC<AboutProps> = ({
     isDragging2.current = false;
   };
 
-  const handleMouseMove = (
-    event: React.MouseEvent<HTMLDivElement, MouseEvent>
-  ) => {
+  const handleMouseMove = (event: MouseEvent) => {
     if (containerRef.current) {
       const containerRect = containerRef.current.getBoundingClientRect();
 
       if (isDragging1.current) {
-        let newPosition1 = event.clientX - containerRect.left;
-
-        // Prevent the first div from passing through the second div
-        if (newPosition1 > endLoopPosition - elementWidth) {
-          newPosition1 = endLoopPosition - elementWidth;
-        }
-
-        if (newPosition1 < 0) newPosition1 = 0;
-
-        setStartLoopPosition(newPosition1);
-        setStartPosition(newPosition1);
+        moveStartDiv(event.clientX - containerRect.left);
       }
 
       if (isDragging2.current) {
-        let newPosition2 = event.clientX - containerRect.left;
-
-        // Prevent the second div from being passed through by the first div
-        if (newPosition2 < startLoopPosition + elementWidth) {
-          newPosition2 = startLoopPosition + elementWidth;
-        }
-
-        if (newPosition2 > containerRect.width - elementWidth) {
-          newPosition2 = containerRect.width - elementWidth;
-        }
-
-        setEndLoopPosition(newPosition2);
-        setEndPosition(newPosition2);
+        moveEndDiv(event.clientX - containerRect.left);
       }
     }
   };
+
+  const moveStartDiv = (position: number) => {
+    let newPosition = position;
+
+    if (newPosition > endLoopPosition - elementWidth) {
+      newPosition = endLoopPosition - elementWidth;
+    }
+
+    if (newPosition < 0) newPosition = 0;
+
+    setStartLoopPosition(newPosition);
+    setStartPosition(newPosition);
+  };
+
+  const moveEndDiv = (position: number) => {
+    let newPosition = position;
+
+    if (newPosition < startLoopPosition + elementWidth) {
+      newPosition = startLoopPosition + elementWidth;
+    }
+
+    const containerWidth = containerRef.current!.getBoundingClientRect().width;
+    if (newPosition > containerWidth - elementWidth) {
+      newPosition = containerWidth - elementWidth;
+    }
+
+    setEndLoopPosition(newPosition);
+    setEndPosition(newPosition);
+  };
+
+  useEffect(() => {
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [endLoopPosition, startLoopPosition]);
 
   return (
     <div
       ref={containerRef}
       className="relative w-full h-32 bg-gray-200"
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseUp}
       style={{
         width: `${width}`,
         height: `${height}`,
         overflow: "hidden",
       }}
+      onMouseDown={handleMouseDown}
     >
-      {/* First Div */}
+      {/* Start Div */}
       <div
-        className="absolute top-1/2 -translate-y-1/2 bg-blue-500"
+        className="absolute top-1/2 -translate-y-1/2"
         style={{
-          width: `${elementWidth}px`,
-          height: `${elementHeight}px`,
+          width: 0,
+          height: 0,
+          borderTop: `${elementHeight / 2}px solid transparent`,
+          borderBottom: `${elementHeight / 2}px solid transparent`,
+          borderLeft: `${elementWidth}px solid blue`,
           left: `${startLoopPosition}px`,
           cursor: "pointer",
         }}
-        onMouseDown={(e) => {
-          e.preventDefault();
-          handleMouseDown(1);
-        }}
-      ></div>
+      />
 
-      {/* Second Div */}
+      {/* End Div */}
       <div
-        className="absolute top-1/2 -translate-y-1/2 bg-red-500"
+        className="absolute top-1/2 -translate-y-1/2"
         style={{
-          width: `${elementWidth}px`,
-          height: `${elementHeight}px`,
+          width: 0,
+          height: 0,
+          borderTop: `${elementHeight / 2}px solid transparent`,
+          borderBottom: `${elementHeight / 2}px solid transparent`,
+          borderRight: `${elementWidth}px solid red`,
           left: `${endLoopPosition}px`,
           cursor: "pointer",
         }}
-        onMouseDown={(e) => {
-          e.preventDefault();
-          handleMouseDown(2);
-        }}
-      ></div>
+      />
     </div>
   );
 };

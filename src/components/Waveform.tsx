@@ -1,7 +1,9 @@
-import axios from "axios";
 import React, { useEffect, useRef, useState } from "react";
-import { FaPause, FaPlay, FaRedo, FaSquare } from "react-icons/fa";
+import { FaPause, FaPlay, FaRedo, FaStop } from "react-icons/fa";
 import WaveSurfer from "wavesurfer.js";
+import { Button, IconButton, Slider, Typography, Box } from "@mui/material";
+import { styled } from "@mui/material/styles";
+import axios from "axios";
 
 interface Props {
   fileUrl: string;
@@ -9,6 +11,26 @@ interface Props {
   loopEndPosition: number;
   waveformContainerRef: React.RefObject<HTMLDivElement>;
 }
+
+const KnobSlider = styled(Slider)(({ theme }) => ({
+  color: theme.palette.primary.main,
+  height: 6,
+  "& .MuiSlider-thumb": {
+    height: 24,
+    width: 24,
+    backgroundColor: theme.palette.primary.main,
+    border: "2px solid #fff",
+    boxShadow: "0 2px 4px 0 rgba(0,0,0,0.2)",
+    "&:hover": {
+      boxShadow: "0 4px 8px 0 rgba(0,0,0,0.2)",
+    },
+  },
+  "& .MuiSlider-rail": {
+    height: 6,
+  },
+}));
+
+const DEFAULT_SPEED_VALUE = 50; // Default value for the speed knob
 
 const Waveform: React.FC<Props> = ({
   fileUrl,
@@ -26,11 +48,8 @@ const Waveform: React.FC<Props> = ({
   const [startPoint, setStartPoint] = useState(0);
   const [endPoint, setEndPoint] = useState(100);
   const [currentAudioTime, setCurrentAudioTime] = useState(0);
-  const [speedValue, setSpeedValue] = useState(50);
+  const [speedValue, setSpeedValue] = useState(DEFAULT_SPEED_VALUE);
 
-  const speedKnobRef = useRef<HTMLDivElement | null>(null);
-
-  //TODO: Add missing features
   useEffect(() => {
     if (containerRef.current) {
       waveformRef.current = WaveSurfer.create({
@@ -42,8 +61,6 @@ const Waveform: React.FC<Props> = ({
       });
 
       waveformRef.current.load(fileUrl);
-
-      const speedKnobElement = speedKnobRef.current;
 
       const handleAudioProcess = () => {
         if (isLooping && waveformRef.current) {
@@ -81,60 +98,6 @@ const Waveform: React.FC<Props> = ({
         Math.pow(4, Math.round(speedValue) / 50 - 1)
       );
     }
-  }, [speedValue]);
-
-  useEffect(() => {
-    const speedKnobElement = speedKnobRef.current;
-
-    const handleKnobDrag = (
-      event: MouseEvent,
-      knobRef: React.RefObject<HTMLDivElement>,
-      value: number,
-      setValue: React.Dispatch<React.SetStateAction<number>>
-    ) => {
-      if (!knobRef.current) return;
-
-      const rect = knobRef.current.getBoundingClientRect();
-      const deltaY = rect.top + rect.height / 2 - event.clientY;
-      const newValue = Math.max(0, Math.min(100, value + deltaY * 0.2));
-      setValue(newValue);
-    };
-
-    const handleMouseClickKnob =
-      (
-        knobRef: React.RefObject<HTMLDivElement>,
-        value: number,
-        setValue: React.Dispatch<React.SetStateAction<number>>
-      ) =>
-      (event: MouseEvent) => {
-        event.preventDefault();
-        const onMouseMove = (e: MouseEvent) =>
-          handleKnobDrag(e, knobRef, value, setValue);
-        document.addEventListener("mousemove", onMouseMove);
-        document.addEventListener(
-          "mouseup",
-          () => {
-            document.removeEventListener("mousemove", onMouseMove);
-          },
-          { once: true }
-        );
-      };
-
-    if (speedKnobElement) {
-      speedKnobElement.addEventListener(
-        "mousedown",
-        handleMouseClickKnob(speedKnobRef, speedValue, setSpeedValue)
-      );
-    }
-
-    return () => {
-      if (speedKnobElement) {
-        speedKnobElement.removeEventListener(
-          "mousedown",
-          handleMouseClickKnob(speedKnobRef, speedValue, setSpeedValue)
-        );
-      }
-    };
   }, [speedValue]);
 
   useEffect(() => {
@@ -222,96 +185,109 @@ const Waveform: React.FC<Props> = ({
   };
 
   const handleSave = (url: string, copy = false) => {
-    //TODO
-    // if (copy) {
-    //   navigator.clipboard.writeText(url);
-    // } else {
-    //   handleDownload(url);
-    // }
+    // TODO: Implement save functionality
+  };
+
+  const handleSliderDoubleClick = () => {
+    setSpeedValue(DEFAULT_SPEED_VALUE);
   };
 
   return (
-    <div>
-      <div ref={containerRef} style={{ position: "relative" }}>
-        <div
-          style={{
+    <Box
+      sx={{
+        width: "100%",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+      }}
+    >
+      <Box
+        ref={containerRef}
+        sx={{ position: "relative", width: "100%", height: 100, mb: 2 }}
+      >
+        <Box
+          sx={{
             position: "absolute",
             top: 0,
             bottom: 0,
-            left: `${loopStartPosition}%`,
+            left: `${loopStartPosition}px`,
             width: "2px",
             backgroundColor: "blue",
             height: "100%",
             zIndex: 10,
+            maxWidth: "100%", // Bound by the waveform container width
+            transform: `translateX(-1px)`, // Center the line
           }}
         />
-        <div
-          style={{
+        <Box
+          sx={{
             position: "absolute",
             top: 0,
             bottom: 0,
-            left: `${loopEndPosition}%`,
+            left: `${loopEndPosition}px`,
             width: "2px",
             backgroundColor: "red",
             height: "100%",
             zIndex: 10,
+            maxWidth: "100%", // Bound by the waveform container width
+            transform: `translateX(-1px)`, // Center the line
           }}
         />
-      </div>
+      </Box>
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          width: "20%",
+          mb: 2,
+        }}
+      >
+        <Typography variant="caption" gutterBottom>
+          Speed
+        </Typography>
+        <KnobSlider
+          value={speedValue}
+          min={0}
+          max={100}
+          onChange={(e, newValue) => setSpeedValue(newValue as number)}
+          onDoubleClick={handleSliderDoubleClick}
+          aria-label="Speed"
+        />
+        <Typography variant="caption">
+          {Math.pow(4, Math.round(speedValue) / 50 - 1).toFixed(2)}x
+        </Typography>
+      </Box>
+      <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+        <IconButton
+          color={isPlaying ? "error" : "primary"}
+          onClick={handlePlayPause}
+        >
+          {isPlaying ? <FaPause /> : <FaPlay />}
+        </IconButton>
+        <IconButton onClick={handleStop}>
+          <FaStop />
+        </IconButton>
+        <IconButton onClick={handleToggleLoop}>
+          <FaRedo />
+        </IconButton>
+      </Box>
 
-      <div className="flex items-center">
-        {isPlaying ? (
-          <FaPause className="text-xl m-2" onClick={handlePlayPause} />
-        ) : (
-          <FaPlay className="text-xl m-2" onClick={handlePlayPause} />
-        )}
-        <FaSquare className="text-xl m-2" onClick={handleStop} />
-        <FaRedo className="text-xl m-2" onClick={handleToggleLoop} />
-        <div className="mx-2 flex flex-col items-center">
-          <div className="mx-2 flex flex-col items-center">
-            <div
-              ref={speedKnobRef}
-              className="w-10 h-10  bg-gray-300 relative rounded-full"
-              style={{
-                transform: `rotate(${calculateRotation(speedValue)}deg)`,
-              }}
-            >
-              <div className="absolute top-0 left-1/2 transform  w-1 h-4 bg-gray-800 -translate-x-1/3" />
-            </div>
-            <span className="text-xs">
-              {Math.pow(4, Math.round(speedValue) / 50 - 1).toFixed(2)}% Speed
-            </span>
-          </div>
-        </div>
-        <div>{fileUrl.split("/").pop()}</div>
-        <div className="flex flex-row p-2">
-          <div className="flex flex-col">
-            <div className="flex m-2">
-              <button
-                className="bg-gray-200 hover:bg-gray-400 rounded-full p-2 m-3"
-                onClick={() => handleSave(fileUrl)}
-              >
-                Save
-              </button>
-              <button
-                className="bg-gray-200 hover:bg-gray-400 rounded-full p-2 m-3"
-                onClick={() => handleSave(fileUrl, true)}
-              >
-                Save Copy
-              </button>
-              <button
-                className="bg-gray-200 hover:bg-gray-400 rounded-full p-2 m-3"
-                onClick={() => handleDownload(fileUrl)}
-              >
-                Download
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Add inputs or sliders to set loop start and end */}
-    </div>
+      <Typography variant="body1" gutterBottom>
+        {fileUrl.split("/").pop()}
+      </Typography>
+      <Box sx={{ display: "flex", gap: 2 }}>
+        <Button variant="contained" onClick={() => handleSave(fileUrl)}>
+          Save
+        </Button>
+        <Button variant="contained" onClick={() => handleSave(fileUrl, true)}>
+          Save Copy
+        </Button>
+        <Button variant="contained" onClick={() => handleDownload(fileUrl)}>
+          Download
+        </Button>
+      </Box>
+    </Box>
   );
 };
 

@@ -81,7 +81,7 @@ const TagsContainer = styled("div")({
   flexWrap: "wrap",
   gap: "4px",
   justifyContent: "center",
-  padding: "8px",
+  padding: "9px",
 });
 
 const DataTable = () => {
@@ -317,10 +317,10 @@ const DataTable = () => {
     {
       field: "tags",
       headerName: "Tags",
-      width: 200,
+      width: 500,
       sortable: false,
       renderCell: (params) => (
-        <TagsContainer>
+        <TagsContainer className="flex content-start">
           {(params.value as string[]).map((tag, index) => (
             <HoverableChip
               key={index}
@@ -337,7 +337,13 @@ const DataTable = () => {
       field: "audio",
       headerName: "Audio",
       width: 400,
-      renderCell: (params) => <audio src={params.row.fileUrl} controls />,
+      renderCell: (params) => (
+        <audio
+          className="pt-1 rounded-full w-full"
+          src={params.row.fileUrl}
+          controls
+        />
+      ),
     },
     {
       field: "actions",
