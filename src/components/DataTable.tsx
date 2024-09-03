@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   DataGrid,
   GridCellParams,
@@ -21,6 +21,16 @@ import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
 import Tooltip from "@mui/material/Tooltip";
 import { styled } from "@mui/material/styles";
+import axios from "axios";
+import { Route } from "react-router-dom";
+
+const LogThis = ({ text }: { text: string }) => {
+  useEffect(() => {
+    console.log(text);
+  }, [text]);
+
+  return <div />;
+};
 
 interface ApiResponseItem {
   id: number;
@@ -35,6 +45,11 @@ interface ApiResponseItem {
 interface Filter {
   field: string;
   value: string | number;
+}
+
+interface AudioFile {
+  file: string;
+  metadata?: any;
 }
 
 const HoverableCell = styled("div")(({ theme }) => ({
@@ -85,29 +100,31 @@ const TagsContainer = styled("div")({
 });
 
 const DataTable = () => {
-  const initialData: ApiResponseItem[] = [
-    {
-      id: 1,
-      title: "Amen Break",
-      artist: "Funk Band",
-      bpm: 100,
-      duration: 5.5,
-      tags: ["drum", "loop"],
-      fileUrl: "/path/to/audio1.mp3",
-    },
-    {
-      id: 2,
-      title: "Crazy Synth",
-      artist: "Aphex Twin",
-      bpm: 180,
-      duration: 3.5,
-      tags: ["synth", "loop"],
-      fileUrl: "/path/to/audio2.mp3",
-    },
+  const [initialData, setInitialData] = useState<ApiResponseItem[]>([
+    // {
+    //   id: 1,
+    //   title: "Amen Break",
+    //   artist: "Funk Band",
+    //   bpm: 100,
+    //   duration: 5.5,
+    //   tags: ["drum", "loop"],
+    //   fileUrl: "/path/to/audio1.mp3",
+    // },
+    // {
+    //   id: 2,
+    //   title: "Crazy Synth",
+    //   artist: "Aphex Twin",
+    //   bpm: 180,
+    //   duration: 3.5,
+    //   tags: ["synth", "loop"],
+    //   fileUrl: "/path/to/audio2.mp3",
+    // },
     // ...other items
-  ];
+  ]);
+  const [audioFiles, setAudioFiles] = useState<AudioFile[]>([]);
+  const [audioMetadata, setAudioMetadata] = useState<any[]>([]);
 
-  const [rows, setRows] = useState<ApiResponseItem[]>(initialData);
+  const [rows, setRows] = useState<ApiResponseItem[]>([]);
   const [filters, setFilters] = useState<Filter[]>([]);
   const [sortModel, setSortModel] = useState<GridSortModel>([
     {
@@ -124,6 +141,68 @@ const DataTable = () => {
   const [selectionModel, setSelectionModel] = useState<GridSelectionModel>([]);
   const [selectedCount, setSelectedCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
+
+  const baseURL = "http://localhost:3000";
+  axios.defaults.baseURL = baseURL;
+
+  useEffect(() => {
+    fetchAudioFiles();
+  }, []);
+
+  useEffect(() => {
+    audioFiles.map((file) => {
+      fetchMetadata(file.file).then((data) => {
+        setAudioMetadata((prevData) => [...prevData, data]);
+      });
+    });
+    generateInitialData();
+  }, [audioFiles]);
+
+  const fetchAudioFiles = async () => {
+    try {
+      const response = await axios.get("/audio");
+      setAudioFiles(response.data.map((file: AudioFile) => file));
+    } catch (error) {
+      console.error("Error fetching audio files:", error);
+    }
+  };
+
+  const fetchMetadata = async (filename: string) => {
+    try {
+      const response = await axios.get(`/audio/${filename}/metadata`);
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching metadata:", error);
+    }
+  };
+
+  const generateInitialData = async () => {
+    let newRows: ApiResponseItem[] = [];
+    console.log("audioFiles", audioFiles);
+
+    try {
+      const fetchPromises = audioFiles.map(async (file, index) => {
+        const metadata = await fetchMetadata(file.file);
+        return {
+          id: index + 1,
+          title: metadata.title,
+          artist: metadata.artist,
+          bpm: metadata.bpm,
+          duration: metadata.duration,
+          tags: metadata.tags,
+          fileUrl: file.file,
+        };
+      });
+
+      Promise.all(fetchPromises).then((newRow) => {
+        setInitialData((data: ApiResponseItem[]) => [...data, ...newRow]);
+        console.log("Initial data:", initialData);
+        setRows((data: ApiResponseItem[]) => [...data, ...newRow]);
+      });
+    } catch (error) {
+      console.error("Error fetching metadata:", error);
+    }
+  };
 
   const applyFilters = (newFilters: Filter[]) => {
     let filteredRows = initialData;
@@ -310,7 +389,7 @@ const DataTable = () => {
       sortable: true,
       renderCell: (params) => (
         <HoverableCell onClick={() => handleCellClick(params, event)}>
-          {params.value}
+          {params.value.toFixed(2)}s
         </HoverableCell>
       ),
     },
@@ -320,7 +399,14 @@ const DataTable = () => {
       width: 500,
       sortable: false,
       renderCell: (params) => (
-        <TagsContainer className="flex content-start">
+        <TagsContainer
+          className="flex content-start items-start"
+          style={{
+            display: "flex",
+            justifyContent: "flex-start",
+            gap: "5px",
+          }}
+        >
           {(params.value as string[]).map((tag, index) => (
             <HoverableChip
               key={index}
@@ -338,11 +424,14 @@ const DataTable = () => {
       headerName: "Audio",
       width: 400,
       renderCell: (params) => (
-        <audio
-          className="pt-1 rounded-full w-full"
-          src={params.row.fileUrl}
-          controls
-        />
+        <div>
+          <audio
+            className="pt-1 rounded-full w-full"
+            src={`${baseURL}/audio/${params.row.fileUrl}`}
+            controls
+          />
+          <LogThis text={`${baseURL}/audio/${params.row.fileUrl}`} />
+        </div>
       ),
     },
     {
