@@ -22,7 +22,7 @@ import Typography from "@mui/material/Typography";
 import Tooltip from "@mui/material/Tooltip";
 import { styled } from "@mui/material/styles";
 import axios from "axios";
-import { Route } from "react-router-dom";
+import { Route, useNavigate } from "react-router-dom";
 
 const LogThis = ({ text }: { text: string }) => {
   useEffect(() => {
@@ -33,7 +33,7 @@ const LogThis = ({ text }: { text: string }) => {
 };
 
 interface ApiResponseItem {
-  id: number;
+  id?: number;
   title: string;
   artist: string;
   bpm: number;
@@ -141,9 +141,13 @@ const DataTable = () => {
   const [selectionModel, setSelectionModel] = useState<GridSelectionModel>([]);
   const [selectedCount, setSelectedCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedFile, setSelectedFile] = useState<AudioFile>();
+  const [newMetadata, setNewMetadata] = useState<any>();
 
   const baseURL = "http://localhost:3000";
   axios.defaults.baseURL = baseURL;
+
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchAudioFiles();
@@ -265,14 +269,19 @@ const DataTable = () => {
     setEditingRow(null);
   };
 
-  const handleSave = () => {
-    if (editingRow) {
+  const handleSave = async () => {
+    if (editingRow && editingRow.id) {
       const updatedRows = rows.map((row) =>
         row.id === editingRow.id ? editingRow : row
       );
       setRows(updatedRows);
+      setNewMetadata(editingRow);
+      console.log("File: ", audioFiles[editingRow.id - 1]);
+      setSelectedFile(audioFiles[editingRow.id - 1]);
+      handleMetadataUpdate();
+      console.log("Post");
+      handleCloseEditDialog();
     }
-    handleCloseEditDialog();
   };
 
   const handleChange = (
@@ -315,6 +324,21 @@ const DataTable = () => {
     setOpenConfirmDialog(true);
   };
 
+  const handleDownload = (url: string) => {
+    axios({
+      url: url,
+      method: "GET",
+      responseType: "blob",
+    }).then((response) => {
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", url.split("/").pop() || "audio");
+      document.body.appendChild(link);
+      link.click();
+    });
+  };
+
   const handleDownloadSelected = () => {
     (selectionModel as number[]).forEach((id) => {
       const item = rows.find((row) => row.id === id);
@@ -322,6 +346,20 @@ const DataTable = () => {
         window.open(item.fileUrl, "_blank");
       }
     });
+  };
+
+  const handleMetadataUpdate = async () => {
+    if (!selectedFile) return;
+
+    try {
+      console.log("I'M IN!");
+      delete newMetadata.id;
+      await axios.put(`/audio/${selectedFile.file}/metadata`, newMetadata);
+      console.log("Metadata updated succesfully!");
+      fetchMetadata(selectedFile.file);
+    } catch (error) {
+      console.error("Error updating metadata:", error);
+    }
   };
 
   const handleSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -354,7 +392,9 @@ const DataTable = () => {
       sortable: true,
       renderCell: (params) => (
         <HoverableCell
-          onClick={() => window.open(params.row.fileUrl, "_blank")}
+          onClick={() =>
+            navigate(`/sampleEdit/${audioFiles[params.row.id - 1].file}`)
+          }
         >
           {params.value}
         </HoverableCell>
@@ -453,7 +493,9 @@ const DataTable = () => {
           </Tooltip>
           <Tooltip title="Download">
             <HoverableIconButton
-              onClick={() => console.log(`Download ID: ${params.row.id}`)}
+              onClick={() =>
+                handleDownload(`${baseURL}/audio/${params.row.fileUrl}`)
+              }
             >
               <DownloadIcon />
             </HoverableIconButton>

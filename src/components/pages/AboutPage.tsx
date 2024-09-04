@@ -69,6 +69,7 @@ const About: React.FC = () => {
   };
 
   const handleMetadataUpdate = async () => {
+    console.log("Updating with this metadata: ", newMetadata);
     if (!selectedFile) return;
 
     try {

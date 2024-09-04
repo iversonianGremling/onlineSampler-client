@@ -1,6 +1,11 @@
 import { useState } from "react";
 import "./App.css";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  useParams,
+} from "react-router-dom";
 import NavBar from "./components/NavBar/NavBar";
 import SampleList from "./components/pages/SampleList";
 import About from "./components/pages/AboutPage";
@@ -15,12 +20,17 @@ function App() {
         <Routes>
           <Route path="/" element={<SampleList />} />
           <Route path="/about" element={<About />} />
-          <Route path="/sampleEdit" element={<SampleEdit />} />
+          <Route path="/sampleEdit/:filename" element={<SampleEditWrapper />} />
           <Route path="*" element={<SampleList />} />
         </Routes>
       </div>
     </Router>
   );
 }
+
+const SampleEditWrapper: React.FC = () => {
+  const { filename } = useParams<{ filename: string }>();
+  return <SampleEdit filename={filename!} />;
+};
 
 export default App;

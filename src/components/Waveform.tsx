@@ -273,9 +273,6 @@ const Waveform: React.FC<Props> = ({
         </IconButton>
       </Box>
 
-      <Typography variant="body1" gutterBottom>
-        {fileUrl.split("/").pop()}
-      </Typography>
       <Box sx={{ display: "flex", gap: 2 }}>
         <Button variant="contained" onClick={() => handleSave(fileUrl)}>
           Save
