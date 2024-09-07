@@ -5,6 +5,8 @@ import {
   GridColDef,
   GridSortModel,
   GridSelectionModel,
+  GridRenderCellParams,
+  GridTreeNodeWithRender,
 } from "@mui/x-data-grid";
 import Paper from "@mui/material/Paper";
 import IconButton from "@mui/material/IconButton";
@@ -23,6 +25,9 @@ import Tooltip from "@mui/material/Tooltip";
 import { styled } from "@mui/material/styles";
 import axios from "axios";
 import { Route, useNavigate } from "react-router-dom";
+import SampleEdit from "./pages/SampleEdit";
+import { Box, Grow } from "@mui/material";
+import CloseIcon from "@mui/icons-material/Close";
 
 const LogThis = ({ text }: { text: string }) => {
   useEffect(() => {
@@ -100,27 +105,7 @@ const TagsContainer = styled("div")({
 });
 
 const DataTable = () => {
-  const [initialData, setInitialData] = useState<ApiResponseItem[]>([
-    // {
-    //   id: 1,
-    //   title: "Amen Break",
-    //   artist: "Funk Band",
-    //   bpm: 100,
-    //   duration: 5.5,
-    //   tags: ["drum", "loop"],
-    //   fileUrl: "/path/to/audio1.mp3",
-    // },
-    // {
-    //   id: 2,
-    //   title: "Crazy Synth",
-    //   artist: "Aphex Twin",
-    //   bpm: 180,
-    //   duration: 3.5,
-    //   tags: ["synth", "loop"],
-    //   fileUrl: "/path/to/audio2.mp3",
-    // },
-    // ...other items
-  ]);
+  const [initialData, setInitialData] = useState<ApiResponseItem[]>([]);
   const [audioFiles, setAudioFiles] = useState<AudioFile[]>([]);
   const [audioMetadata, setAudioMetadata] = useState<any[]>([]);
 
@@ -135,6 +120,7 @@ const DataTable = () => {
   const [editingRow, setEditingRow] = useState<ApiResponseItem | null>(null);
   const [openEditDialog, setOpenEditDialog] = useState(false);
   const [openConfirmDialog, setOpenConfirmDialog] = useState(false);
+  const [openSampleViewDialog, setOpenSampleViewDialog] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<ApiResponseItem | null>(
     null
   );
@@ -142,6 +128,7 @@ const DataTable = () => {
   const [selectedCount, setSelectedCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedFile, setSelectedFile] = useState<AudioFile>();
+  const [fileTitle, setFileTitle] = useState<string>();
   const [newMetadata, setNewMetadata] = useState<any>();
 
   const baseURL = "http://localhost:3000";
@@ -300,7 +287,9 @@ const DataTable = () => {
   const handleConfirmDelete = () => {
     if (selectedCount > 0) {
       const idsToDelete = selectionModel as number[];
-      const updatedRows = rows.filter((row) => !idsToDelete.includes(row.id));
+      const updatedRows = rows.filter(
+        (row) => !idsToDelete.includes(row.id as number)
+      );
       setRows(updatedRows);
       setSelectionModel([]);
       setSelectedCount(0);
@@ -315,6 +304,10 @@ const DataTable = () => {
   const handleCancelDelete = () => {
     setOpenConfirmDialog(false);
     setItemToDelete(null);
+  };
+
+  const handleCloseSampleViewDialog = () => {
+    setOpenSampleViewDialog(false);
   };
 
   const handleDeleteSelected = () => {
@@ -343,6 +336,15 @@ const DataTable = () => {
       const item = rows.find((row) => row.id === id);
       if (item) {
         window.open(item.fileUrl, "_blank");
+      }
+    });
+  };
+
+  const handleEditSelected = () => {
+    (selectionModel as number[]).forEach((id) => {
+      const item = rows.find((row) => row.id === id);
+      if (item) {
+        console.log("Editing item: ", item);
       }
     });
   };
@@ -390,9 +392,11 @@ const DataTable = () => {
       sortable: true,
       renderCell: (params) => (
         <HoverableCell
-          onClick={() =>
-            navigate(`/sampleEdit/${audioFiles[params.row.id - 1].file}`)
-          }
+          onClick={() => {
+            setSelectedFile({ file: audioFiles[params.row.id - 1].file });
+            setFileTitle(params.value);
+            setOpenSampleViewDialog(true);
+          }}
         >
           {params.value}
         </HoverableCell>
@@ -414,8 +418,14 @@ const DataTable = () => {
       headerName: "BPM",
       width: 100,
       sortable: true,
-      renderCell: (params) => (
-        <HoverableCell onClick={() => handleCellClick(params, event)}>
+      renderCell: (
+        params: GridRenderCellParams<any, any, any, GridTreeNodeWithRender>
+      ) => (
+        <HoverableCell
+          onClick={(event: React.MouseEvent<Element, MouseEvent>) =>
+            handleCellClick(params, event)
+          }
+        >
           {params.value}
         </HoverableCell>
       ),
@@ -426,7 +436,7 @@ const DataTable = () => {
       width: 100,
       sortable: true,
       renderCell: (params) => (
-        <HoverableCell onClick={() => handleCellClick(params, event)}>
+        <HoverableCell onClick={(event) => handleCellClick(params, event)}>
           {params.value.toFixed(2)}s
         </HoverableCell>
       ),
@@ -479,6 +489,15 @@ const DataTable = () => {
       sortable: false,
       renderCell: (params) => (
         <div style={{ display: "flex", gap: "8px" }}>
+          <Tooltip title="Download">
+            <HoverableIconButton
+              onClick={() =>
+                handleDownload(`${baseURL}/audio/${params.row.fileUrl}`)
+              }
+            >
+              <DownloadIcon />
+            </HoverableIconButton>
+          </Tooltip>
           <Tooltip title="Edit">
             <HoverableIconButton onClick={() => handleEditClick(params.row)}>
               <EditIcon />
@@ -487,15 +506,6 @@ const DataTable = () => {
           <Tooltip title="Delete">
             <HoverableIconButton onClick={() => handleDeleteClick(params.row)}>
               <DeleteIcon />
-            </HoverableIconButton>
-          </Tooltip>
-          <Tooltip title="Download">
-            <HoverableIconButton
-              onClick={() =>
-                handleDownload(`${baseURL}/audio/${params.row.fileUrl}`)
-              }
-            >
-              <DownloadIcon />
             </HoverableIconButton>
           </Tooltip>
         </div>
@@ -523,50 +533,99 @@ const DataTable = () => {
 
   return (
     <Paper sx={{ height: 600, width: "100%", padding: "16px" }}>
-      <SearchBar
-        label="Search"
-        variant="outlined"
-        value={searchTerm}
-        onChange={handleSearch}
-        fullWidth
-      />
-      <div style={{ marginBottom: "16px" }}>
-        {filters.map((filter, index) => (
-          <HoverableChip
-            key={index}
-            label={`${filter.field}: ${filter.value}`}
-            onDelete={() => handleFilterDelete(filter)}
-            color="secondary"
-            variant="outlined"
-          />
-        ))}
-        <Tooltip title="Delete selected">
-          <HoverableIconButton onClick={handleDeleteSelected} color="error">
-            <DeleteIcon />
-          </HoverableIconButton>
-        </Tooltip>
-        <Tooltip title="Download selected">
-          <HoverableIconButton onClick={handleDownloadSelected}>
-            <DownloadIcon />
-          </HoverableIconButton>
-        </Tooltip>
+      <div style={{ display: "flex", alignContent: "flex-start" }}>
+        <SearchBar
+          label="Search"
+          variant="outlined"
+          value={searchTerm}
+          onChange={handleSearch}
+          fullWidth
+        />
+        {selectedCount > 0 && (
+          <Grow in={selectedCount > 0}>
+            <div
+              style={{
+                display: "flex",
+                gap: "2px",
+                marginLeft: "auto",
+                alignContent: "center",
+                padding: "8px",
+                height: "90%",
+              }}
+            >
+              <Tooltip title="Delete selected">
+                <HoverableIconButton
+                  onClick={handleDeleteSelected}
+                  color="error"
+                >
+                  <DeleteIcon />
+                </HoverableIconButton>
+              </Tooltip>
+              <Tooltip title="Download selected">
+                <HoverableIconButton onClick={handleDownloadSelected}>
+                  <DownloadIcon />
+                </HoverableIconButton>
+              </Tooltip>
+              <Tooltip title="Edit selected">
+                <HoverableIconButton onClick={handleEditSelected}>
+                  <EditIcon />
+                </HoverableIconButton>
+              </Tooltip>
+            </div>
+          </Grow>
+        )}
       </div>
+
       <DataGrid
         rows={rows}
         columns={columns}
         pageSizeOptions={[5, 10]}
         checkboxSelection
-        selectionModel={selectionModel}
-        onSelectionModelChange={(newSelection) => {
+        rowSelectionModel={selectionModel}
+        onRowSelectionModelChange={(newSelection) => {
           setSelectionModel(newSelection);
-          setSelectedCount((newSelection as number[]).length);
+          setSelectedCount(newSelection.length); //TODO: It even fails when setting it to a constant???
         }}
         sortingOrder={["asc", "desc"]}
         sortModel={sortModel}
         onSortModelChange={(model) => setSortModel(model)}
         onCellClick={(params, event) => handleCellClick(params, event)}
-        sx={{ border: 0 }}
+        sx={{ border: 0, height: "80%" }}
       />
+      <div style={{ marginBottom: "16px" }}>
+        <div style={{ display: "flex", gap: "8px" }}>
+          {filters.map((filter, index) => (
+            <Grow in={filters.length > 0}>
+              <HoverableChip
+                key={index}
+                label={
+                  `${
+                    filter.field === "artist"
+                      ? "Artist: "
+                      : filter.field === "bpm"
+                      ? "BPM: "
+                      : filter.field === "duration"
+                      ? "Duration: "
+                      : filter.field === "tags"
+                      ? "Tag: "
+                      : ""
+                  }` +
+                  `${
+                    typeof filter.value === "number"
+                      ? filter.value !== Math.round(filter.value)
+                        ? "~" + filter.value.toFixed(0) + "s"
+                        : "~" + filter.value
+                      : filter.value
+                  }`
+                }
+                onDelete={() => handleFilterDelete(filter)}
+                color="secondary"
+                variant="outlined"
+              />
+            </Grow>
+          ))}
+        </div>
+      </div>
       <Dialog open={openEditDialog} onClose={handleCloseEditDialog}>
         <DialogTitle>Edit Metadata</DialogTitle>
         <DialogContent>
@@ -610,7 +669,10 @@ const DataTable = () => {
             onChange={(e) =>
               handleChange(
                 "tags",
-                e.target.value.split(",").map((tag) => tag.trim())
+                e.target.value
+                  .split(",")
+                  .map((tag) => tag.trim())
+                  .join(", ")
               )
             }
           />
@@ -641,6 +703,30 @@ const DataTable = () => {
             Delete
           </Button>
         </DialogActions>
+      </Dialog>
+      <Dialog
+        open={openSampleViewDialog}
+        onClose={handleCloseSampleViewDialog}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>
+          <Box
+            display="flex"
+            justifyContent="space-between"
+            alignItems="center"
+          >
+            <Typography align="center" variant="h6">
+              {fileTitle ?? ""}
+            </Typography>
+            <IconButton edge="end" onClick={handleCloseSampleViewDialog}>
+              <CloseIcon />
+            </IconButton>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <SampleEdit filename={selectedFile?.file ?? ""} />
+        </DialogContent>
       </Dialog>
     </Paper>
   );

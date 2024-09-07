@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { FaPause, FaPlay, FaRedo, FaStop } from "react-icons/fa";
+import { FaPause, FaPlay, FaRedo, FaRunning, FaStop } from "react-icons/fa";
 import WaveSurfer from "wavesurfer.js";
 import { Button, IconButton, Slider, Typography, Box } from "@mui/material";
 import { styled } from "@mui/material/styles";
@@ -35,9 +35,10 @@ const KnobSlider = styled(Slider)(({ theme }) => ({
   color: theme.palette.primary.main,
   height: 6,
   "& .MuiSlider-thumb": {
-    height: 24,
-    width: 24,
+    height: 15,
+    width: 15,
     backgroundColor: theme.palette.primary.main,
+    margin: 2,
     // border: "2px solid #fff",
     // boxShadow: "0 2px 4px 0 rgba(0,0,0,0.2)",
     // "&:hover": {
@@ -149,11 +150,13 @@ const Waveform: React.FC<Props> = ({ fileUrl, waveformContainerRef }) => {
         waveformRef.current.pause();
         setIsPlaying(false);
       } else {
-        waveformRef.current.seekTo(
-          Math.max(startPoint, loopStartPosition) /
-            waveformRef.current.getDuration()
+        waveformRef.current.setTime(
+          Math.max(
+            currentAudioTime / waveformRef.current.getDuration(),
+            (loopStartPosition / 100) * waveformRef.current.getDuration()
+          )
         );
-        waveformRef.current.setTime(currentAudioTime);
+        // waveformRef.current.setTime(currentAudioTime);
         waveformRef.current.play();
         setIsPlaying(true);
       }
@@ -175,10 +178,6 @@ const Waveform: React.FC<Props> = ({ fileUrl, waveformContainerRef }) => {
       if (start >= end) return; // Prevent overlap
       setSliderPositions(newValue as [number, number]);
     }
-  };
-
-  const calculateRotation = (value: number) => {
-    return ((value / 100) * 180 - 90) * 1.45;
   };
 
   const handleDownload = (url: string) => {
@@ -206,9 +205,6 @@ const Waveform: React.FC<Props> = ({ fileUrl, waveformContainerRef }) => {
 
   const handleLoopingClick = () => {
     if (!isLooping) {
-      console.log("LoopStart: ", loopStartPosition);
-      console.log("Waveform Duration: ", waveformRef.current?.getDuration());
-      console.log("LoopEnd: ", loopEndPosition);
       waveformRef.current?.setTime(loopStartPosition);
     }
     setIsLooping(!isLooping);
@@ -313,8 +309,8 @@ const Waveform: React.FC<Props> = ({ fileUrl, waveformContainerRef }) => {
         <Box
           sx={{
             display: "flex",
-            flexDirection: "row",
-            justifyContent: "space-between",
+            flexDirection: "column",
+            // justifyContent: "center",
             width: "100%",
           }}
         >
@@ -322,6 +318,7 @@ const Waveform: React.FC<Props> = ({ fileUrl, waveformContainerRef }) => {
             sx={{
               display: "flex",
               alignItems: "center",
+              justifyContent: "center",
               mb: 2,
               paddingRight: 2,
               paddingLeft: 2,
@@ -330,15 +327,17 @@ const Waveform: React.FC<Props> = ({ fileUrl, waveformContainerRef }) => {
             <IconButton
               color={isPlaying ? "error" : "primary"}
               onClick={handlePlayPause}
+              size="medium"
             >
               {isPlaying ? <FaPause /> : <FaPlay />}
             </IconButton>
-            <IconButton color="error" onClick={handleStop}>
+            <IconButton color="error" onClick={handleStop} size="medium">
               <FaStop />
             </IconButton>
             <IconButton
               color={!isLooping ? "primary" : "secondary"}
               onClick={() => handleLoopingClick()}
+              size="medium"
             >
               <FaRedo />
             </IconButton>
@@ -349,13 +348,13 @@ const Waveform: React.FC<Props> = ({ fileUrl, waveformContainerRef }) => {
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
-              width: "30%",
-              mb: 2,
+              width: "100%",
+              // mb: 2,
             }}
           >
-            <Typography variant="caption" gutterBottom>
+            {/* <Typography variant="caption" gutterBottom>
               Speed
-            </Typography>
+            </Typography> */}
             <KnobSlider
               style={{ color: "blue" }}
               value={speedValue}
@@ -365,9 +364,10 @@ const Waveform: React.FC<Props> = ({ fileUrl, waveformContainerRef }) => {
               onDoubleClick={handleSliderDoubleClick}
               aria-label="Speed"
             />
-            <Typography variant="caption">
+            <FaRunning size={21} />
+            {/* <Typography variant="caption">
               {Math.pow(4, Math.round(speedValue) / 50 - 1).toFixed(2)}x
-            </Typography>
+            </Typography> */}
           </Box>
           <Box sx={{ display: "flex", gap: 2 }}>
             {/*          <Button variant="contained" onClick={() => handleSave(fileUrl)}>
@@ -377,13 +377,6 @@ const Waveform: React.FC<Props> = ({ fileUrl, waveformContainerRef }) => {
             Save Copy
           </Button>
 */}
-            <Button
-              variant="contained"
-              sx={{ margin: 3 }}
-              onClick={() => handleDownload(fileUrl)}
-            >
-              Download
-            </Button>
           </Box>
         </Box>
       </Box>

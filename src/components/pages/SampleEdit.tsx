@@ -16,20 +16,20 @@ const SampleEdit = ({ filename }: SampleEditProps) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const baseURL = "http://localhost:3000";
+  const [metadata, setMetadata]: any = useState<any>({});
 
   axios.defaults.baseURL = baseURL;
 
   useEffect(() => {
-    fetchAudioFile();
+    setMetadata(fetchMetadata());
   }, []);
 
-  const fetchAudioFile = async () => {
+  const fetchMetadata = async () => {
     try {
-      const response = await axios.get(`${baseURL}/audio/${filename}`);
-      response.data.file;
-      // Handle file load logic
+      const response = await axios.get(`/audio/${filename}/metadata`);
+      return response.data;
     } catch (error) {
-      console.error("Error fetching file: ", error);
+      console.error("Error fetching metadata:", error);
     }
   };
 
@@ -45,14 +45,6 @@ const SampleEdit = ({ filename }: SampleEditProps) => {
         alignItems: "center",
       }}
     >
-      <Typography
-        variant="h5"
-        gutterBottom
-        sx={{ textAlign: "left", maxWidth: "80%" }}
-      >
-        {filename.toUpperCase()}
-      </Typography>
-
       <Box
         sx={{
           position: "relative", // Ensures that LoopSelector can be positioned absolutely
