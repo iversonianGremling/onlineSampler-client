@@ -7,10 +7,29 @@ import axios from "axios";
 
 interface Props {
   fileUrl: string;
-  loopStartPosition: number;
-  loopEndPosition: number;
   waveformContainerRef: React.RefObject<HTMLDivElement>;
 }
+
+const MultiSlider = styled(Slider)(({ theme }) => ({
+  color: theme.palette.primary.main,
+  height: 6,
+  "& .MuiSlider-thumb": {
+    height: 24,
+    width: 24,
+    backgroundColor: theme.palette.primary.main,
+    // border: "2px solid #fff",
+    // boxShadow: "0 2px 4px 0 rgba(0,0,0,0.2)",
+    // "&:hover": {
+    //   boxShadow: "0 4px 8px 0 rgba(0,0,0,0.2)",
+    // },
+  },
+  "& .MuiSlider-rail": {
+    display: "none",
+  },
+  "& .MuiSlider-track": {
+    display: "none",
+  },
+}));
 
 const KnobSlider = styled(Slider)(({ theme }) => ({
   color: theme.palette.primary.main,
@@ -19,42 +38,40 @@ const KnobSlider = styled(Slider)(({ theme }) => ({
     height: 24,
     width: 24,
     backgroundColor: theme.palette.primary.main,
-    border: "2px solid #fff",
-    boxShadow: "0 2px 4px 0 rgba(0,0,0,0.2)",
-    "&:hover": {
-      boxShadow: "0 4px 8px 0 rgba(0,0,0,0.2)",
-    },
-  },
-  "& .MuiSlider-rail": {
-    height: 6,
+    // border: "2px solid #fff",
+    // boxShadow: "0 2px 4px 0 rgba(0,0,0,0.2)",
+    // "&:hover": {
+    //   boxShadow: "0 4px 8px 0 rgba(0,0,0,0.2)",
+    // },
   },
 }));
 
 const DEFAULT_SPEED_VALUE = 50; // Default value for the speed knob
 
-const Waveform: React.FC<Props> = ({
-  fileUrl,
-  loopStartPosition,
-  loopEndPosition,
-  waveformContainerRef,
-}) => {
+const Waveform: React.FC<Props> = ({ fileUrl, waveformContainerRef }) => {
   const waveformRef = useRef<WaveSurfer | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [loopStart, setLoopStart] = useState(0);
-  const [loopEnd, setLoopEnd] = useState(100);
+  const [loopStartPosition, setLoopStartPosition] = useState(0);
+  const [loopEndPosition, setLoopEndPosition] = useState(100);
+  const [loopDuration, setLoopDuration] = useState(0);
   const [isLooping, setIsLooping] = useState(false);
   const [playbackRate, setPlaybackRate] = useState(1);
   const [startPoint, setStartPoint] = useState(0);
   const [endPoint, setEndPoint] = useState(100);
   const [currentAudioTime, setCurrentAudioTime] = useState(0);
   const [speedValue, setSpeedValue] = useState(DEFAULT_SPEED_VALUE);
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [sliderPositions, setSliderPositions] = useState<[number, number]>([
+    loopStartPosition,
+    loopEndPosition,
+  ]);
 
   useEffect(() => {
     if (containerRef.current) {
       waveformRef.current = WaveSurfer.create({
         container: containerRef.current,
-        waveColor: "#D9DCFF",
+        waveColor: "#f2f2f2",
         progressColor: "#4353FF",
         barWidth: 3,
         height: 100,
@@ -62,35 +79,43 @@ const Waveform: React.FC<Props> = ({
 
       waveformRef.current.load(fileUrl);
 
-      const handleAudioProcess = () => {
-        if (isLooping && waveformRef.current) {
-          if (
-            waveformRef.current.getCurrentTime() >=
-            (loopEnd / 100) * waveformRef.current.getDuration() - 0.01
-          ) {
-            waveformRef.current.seekTo(
-              loopStart / waveformRef.current.getDuration()
-            );
-          }
-        } else if (waveformRef.current) {
-          if (
-            waveformRef.current.getCurrentTime() >=
-            (endPoint / 100) * waveformRef.current.getDuration()
-          ) {
-            waveformRef.current.pause();
-            setIsPlaying(false);
-          }
-        }
-      };
-
-      waveformRef.current.on("audioprocess", handleAudioProcess);
+      waveformRef.current.on("ready", () => {
+        setIsLoaded(true);
+      });
 
       return () => {
-        waveformRef.current?.un("audioprocess", handleAudioProcess);
         waveformRef.current?.destroy();
       };
     }
-  }, [fileUrl, isLooping, loopStart, loopEnd, endPoint]);
+  }, [fileUrl]);
+
+  useEffect(() => {
+    const handleAudioProcess = () => {
+      if (isLooping && isLoaded && waveformRef.current) {
+        if (
+          waveformRef.current.getCurrentTime() >=
+          (loopEndPosition / 100) * waveformRef.current.getDuration()
+        ) {
+          waveformRef.current.seekTo(loopStartPosition / 100);
+        }
+      }
+    };
+
+    const handleFinish = () => {
+      if (!isLooping && waveformRef.current) {
+        setIsPlaying(false);
+        waveformRef.current.seekTo(0);
+      }
+    };
+
+    waveformRef.current?.on("audioprocess", handleAudioProcess);
+    waveformRef.current?.on("finish", handleFinish);
+
+    return () => {
+      waveformRef.current?.un("audioprocess", handleAudioProcess);
+      waveformRef.current?.un("finish", handleFinish);
+    };
+  }, [isLooping, loopStartPosition, loopEndPosition, isLoaded]);
 
   useEffect(() => {
     if (waveformRef.current) {
@@ -112,6 +137,11 @@ const Waveform: React.FC<Props> = ({
     }
   }, [startPoint, endPoint]);
 
+  useEffect(() => {
+    setLoopStartPosition(sliderPositions[0]);
+    setLoopEndPosition(sliderPositions[1]);
+  }, [sliderPositions]);
+
   const handlePlayPause = () => {
     if (waveformRef.current) {
       if (isPlaying) {
@@ -120,7 +150,8 @@ const Waveform: React.FC<Props> = ({
         setIsPlaying(false);
       } else {
         waveformRef.current.seekTo(
-          Math.max(startPoint, loopStart) / waveformRef.current.getDuration()
+          Math.max(startPoint, loopStartPosition) /
+            waveformRef.current.getDuration()
         );
         waveformRef.current.setTime(currentAudioTime);
         waveformRef.current.play();
@@ -138,31 +169,12 @@ const Waveform: React.FC<Props> = ({
     }
   };
 
-  const handleSetLoopStart = (start: number) => {
-    setLoopStart(start);
-  };
-
-  const handleSetLoopEnd = (end: number) => {
-    setLoopEnd(end);
-  };
-
-  const handleToggleLoop = () => {
-    setIsLooping(!isLooping);
-  };
-
-  const handleSetPlaybackRate = (rate: number) => {
-    if (waveformRef.current) {
-      waveformRef.current.setPlaybackRate(rate);
+  const handleSliderChange = (event: Event, newValue: number | number[]) => {
+    if (Array.isArray(newValue)) {
+      const [start, end] = newValue;
+      if (start >= end) return; // Prevent overlap
+      setSliderPositions(newValue as [number, number]);
     }
-    setPlaybackRate(rate);
-  };
-
-  const handleSetStartPoint = (start: number) => {
-    setStartPoint(Math.min(start, loopStart));
-  };
-
-  const handleSetEndPoint = (end: number) => {
-    setEndPoint(Math.max(end, loopEnd));
   };
 
   const calculateRotation = (value: number) => {
@@ -192,99 +204,190 @@ const Waveform: React.FC<Props> = ({
     setSpeedValue(DEFAULT_SPEED_VALUE);
   };
 
+  const handleLoopingClick = () => {
+    if (!isLooping) {
+      console.log("LoopStart: ", loopStartPosition);
+      console.log("Waveform Duration: ", waveformRef.current?.getDuration());
+      console.log("LoopEnd: ", loopEndPosition);
+      waveformRef.current?.setTime(loopStartPosition);
+    }
+    setIsLooping(!isLooping);
+  };
+
   return (
-    <Box
-      sx={{
-        width: "100%",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-      }}
-    >
-      <Box
-        ref={containerRef}
-        sx={{ position: "relative", width: "100%", height: 100, mb: 2 }}
-      >
-        <Box
-          sx={{
-            position: "absolute",
-            top: 0,
-            bottom: 0,
-            left: `${loopStartPosition}px`,
-            width: "2px",
-            backgroundColor: "blue",
-            height: "100%",
-            zIndex: 10,
-            maxWidth: "100%", // Bound by the waveform container width
-            transform: `translateX(-1px)`, // Center the line
-          }}
-        />
-        <Box
-          sx={{
-            position: "absolute",
-            top: 0,
-            bottom: 0,
-            left: `${loopEndPosition}px`,
-            width: "2px",
-            backgroundColor: "red",
-            height: "100%",
-            zIndex: 10,
-            maxWidth: "100%", // Bound by the waveform container width
-            transform: `translateX(-1px)`, // Center the line
-          }}
-        />
-      </Box>
+    <div>
       <Box
         sx={{
+          width: "100%",
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
-          width: "20%",
-          mb: 2,
         }}
       >
-        <Typography variant="caption" gutterBottom>
-          Speed
-        </Typography>
-        <KnobSlider
-          value={speedValue}
-          min={0}
-          max={100}
-          onChange={(e, newValue) => setSpeedValue(newValue as number)}
-          onDoubleClick={handleSliderDoubleClick}
-          aria-label="Speed"
-        />
-        <Typography variant="caption">
-          {Math.pow(4, Math.round(speedValue) / 50 - 1).toFixed(2)}x
-        </Typography>
-      </Box>
-      <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
-        <IconButton
-          color={isPlaying ? "error" : "primary"}
-          onClick={handlePlayPause}
+        <Box
+          ref={containerRef}
+          sx={{
+            position: "relative",
+            width: "100%",
+            height: 100,
+            mb: 2,
+            // boxShadow: 3,
+          }}
         >
-          {isPlaying ? <FaPause /> : <FaPlay />}
-        </IconButton>
-        <IconButton onClick={handleStop}>
-          <FaStop />
-        </IconButton>
-        <IconButton onClick={handleToggleLoop}>
-          <FaRedo />
-        </IconButton>
-      </Box>
+          {/* Vertical line representing loop start */}
+          <Box
+            sx={{
+              display: `${isLooping ? "block" : "none"}`,
+              position: "absolute",
+              top: 0,
+              bottom: 0,
+              left: `${loopStartPosition}%`,
+              width: "2px",
+              backgroundColor: "black",
+              height: "100%",
+              zIndex: 10,
+              transform: `translateX(-1px)`, // Center the line
+            }}
+          />
+          {/* Vertical line representing loop end */}
+          <Box
+            sx={{
+              display: `${isLooping ? "block" : "none"}`,
+              position: "absolute",
+              top: 0,
+              bottom: 0,
+              left: `${loopEndPosition}%`,
+              width: "2px",
+              backgroundColor: "grey",
+              height: "100%",
+              zIndex: 10,
+              transform: `translateX(-1px)`, // Center the line
+            }}
+          />
+          <Box
+            sx={{
+              display: `${isLooping ? "block" : "none"}`,
+              position: "absolute",
+              top: 0,
+              bottom: 0,
+              left: `0%`,
+              width: `${sliderPositions[0]}%`,
+              backgroundColor: "rgba(40, 40, 40, 0.1)", // Transparent blue
+              height: "100%",
+              zIndex: 5,
+            }}
+          />
+          <Box
+            sx={{
+              display: `${isLooping ? "block" : "none"}`,
+              position: "absolute",
+              top: 0,
+              bottom: 0,
+              left: `${sliderPositions[1]}%`,
+              width: `${100 - sliderPositions[1]}%`,
+              backgroundColor: "rgba(40, 40, 40, 0.1)", // Transparent blue
+              height: "100%",
+              zIndex: 5,
+            }}
+          />
+          {/* Dual slider for loop start/end */}
+          <Slider
+            value={[loopStartPosition, loopEndPosition]}
+            onChange={handleSliderChange}
+            step={0.1} // Add this line for more granular control
+            aria-labelledby="range-slider"
+            sx={{
+              display: `${isLooping ? "block" : "none"}`,
+              position: "absolute",
+              top: 36,
+              left: 0,
+              width: "100%",
+              zIndex: 15,
+              pointerEvents: "auto",
+              backgroundColor: "transparent",
+              color: "transparent",
+            }}
+          />
+        </Box>
 
-      <Box sx={{ display: "flex", gap: 2 }}>
-        <Button variant="contained" onClick={() => handleSave(fileUrl)}>
-          Save
-        </Button>
-        <Button variant="contained" onClick={() => handleSave(fileUrl, true)}>
-          Save Copy
-        </Button>
-        <Button variant="contained" onClick={() => handleDownload(fileUrl)}>
-          Download
-        </Button>
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: "row",
+            justifyContent: "space-between",
+            width: "100%",
+          }}
+        >
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              mb: 2,
+              paddingRight: 2,
+              paddingLeft: 2,
+            }}
+          >
+            <IconButton
+              color={isPlaying ? "error" : "primary"}
+              onClick={handlePlayPause}
+            >
+              {isPlaying ? <FaPause /> : <FaPlay />}
+            </IconButton>
+            <IconButton color="error" onClick={handleStop}>
+              <FaStop />
+            </IconButton>
+            <IconButton
+              color={!isLooping ? "primary" : "secondary"}
+              onClick={() => handleLoopingClick()}
+            >
+              <FaRedo />
+            </IconButton>
+          </Box>
+
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              width: "30%",
+              mb: 2,
+            }}
+          >
+            <Typography variant="caption" gutterBottom>
+              Speed
+            </Typography>
+            <KnobSlider
+              style={{ color: "blue" }}
+              value={speedValue}
+              min={0}
+              max={100}
+              onChange={(e, newValue) => setSpeedValue(newValue as number)}
+              onDoubleClick={handleSliderDoubleClick}
+              aria-label="Speed"
+            />
+            <Typography variant="caption">
+              {Math.pow(4, Math.round(speedValue) / 50 - 1).toFixed(2)}x
+            </Typography>
+          </Box>
+          <Box sx={{ display: "flex", gap: 2 }}>
+            {/*          <Button variant="contained" onClick={() => handleSave(fileUrl)}>
+            Save
+          </Button>
+          <Button variant="contained" onClick={() => handleSave(fileUrl, true)}>
+            Save Copy
+          </Button>
+*/}
+            <Button
+              variant="contained"
+              sx={{ margin: 3 }}
+              onClick={() => handleDownload(fileUrl)}
+            >
+              Download
+            </Button>
+          </Box>
+        </Box>
       </Box>
-    </Box>
+    </div>
   );
 };
 

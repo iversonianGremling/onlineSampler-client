@@ -26,6 +26,7 @@ const SampleEdit = ({ filename }: SampleEditProps) => {
   const fetchAudioFile = async () => {
     try {
       const response = await axios.get(`${baseURL}/audio/${filename}`);
+      response.data.file;
       // Handle file load logic
     } catch (error) {
       console.error("Error fetching file: ", error);
@@ -41,13 +42,14 @@ const SampleEdit = ({ filename }: SampleEditProps) => {
       sx={{
         display: "flex",
         flexDirection: "column",
-        justifyContent: "left",
-        alignItems: "top",
-        height: "100vh",
-        width: "100vw",
+        alignItems: "center",
       }}
     >
-      <Typography variant="h5" gutterBottom sx={{ textAlign: "left" }}>
+      <Typography
+        variant="h5"
+        gutterBottom
+        sx={{ textAlign: "left", maxWidth: "80%" }}
+      >
         {filename.toUpperCase()}
       </Typography>
 
@@ -67,18 +69,8 @@ const SampleEdit = ({ filename }: SampleEditProps) => {
             width: "100%",
             height: "100%",
             position: "relative",
-            boxShadow: "0 0 10px 0 rgba(0,0,0,0.2)",
           }}
         >
-          <LoopSelector
-            containerRef={containerRef}
-            initialStartPosition={loopStart}
-            initialEndPosition={loopEnd}
-            setStartPosition={setLoopStart}
-            setEndPosition={setLoopEnd}
-            width={"100%"}
-            height={"5%"}
-          />
           <Waveform
             waveformContainerRef={containerRef}
             fileUrl={`${baseURL}/audio/${filename}`}

@@ -275,11 +275,10 @@ const DataTable = () => {
         row.id === editingRow.id ? editingRow : row
       );
       setRows(updatedRows);
-      setNewMetadata(editingRow);
-      console.log("File: ", audioFiles[editingRow.id - 1]);
-      setSelectedFile(audioFiles[editingRow.id - 1]);
-      handleMetadataUpdate();
-      console.log("Post");
+
+      // Directly pass the updated metadata and file to handleMetadataUpdate
+      handleMetadataUpdate(editingRow, audioFiles[editingRow.id - 1]);
+
       handleCloseEditDialog();
     }
   };
@@ -348,15 +347,14 @@ const DataTable = () => {
     });
   };
 
-  const handleMetadataUpdate = async () => {
-    if (!selectedFile) return;
-
+  const handleMetadataUpdate = async (
+    metadata: ApiResponseItem,
+    file: AudioFile
+  ) => {
     try {
-      console.log("I'M IN!");
-      delete newMetadata.id;
-      await axios.put(`/audio/${selectedFile.file}/metadata`, newMetadata);
-      console.log("Metadata updated succesfully!");
-      fetchMetadata(selectedFile.file);
+      const { id, ...metadataWithoutId } = metadata; // Remove id before sending
+      await axios.put(`/audio/${file.file}/metadata`, metadataWithoutId);
+      console.log("Metadata updated successfully!");
     } catch (error) {
       console.error("Error updating metadata:", error);
     }
