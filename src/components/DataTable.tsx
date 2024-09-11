@@ -28,6 +28,7 @@ import { Route, useNavigate } from "react-router-dom";
 import SampleEdit from "./pages/SampleEdit";
 import { Box, Grow } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
+import FileUpload from "./FileUpload";
 
 const LogThis = ({ text }: { text: string }) => {
   useEffect(() => {
@@ -272,8 +273,9 @@ const DataTable = () => {
 
   const handleChange = (
     field: keyof ApiResponseItem,
-    value: string | number
+    value: string | number | string[]
   ) => {
+    console.log("Handling change for: ", field, value);
     if (editingRow) {
       setEditingRow({ ...editingRow, [field]: value });
     }
@@ -290,12 +292,22 @@ const DataTable = () => {
       const updatedRows = rows.filter(
         (row) => !idsToDelete.includes(row.id as number)
       );
+      console.log(`Rows: `, rows);
       setRows(updatedRows);
       setSelectionModel([]);
       setSelectedCount(0);
+
+      // Call backend for each file
+      idsToDelete.forEach((id) => {
+        const filename = rows.find((row) => row.id === id)?.fileUrl;
+        fetch(`${baseURL}/audio/${filename}`, { method: "DELETE" });
+      });
     } else if (itemToDelete) {
       const updatedRows = rows.filter((row) => row.id !== itemToDelete.id);
       setRows(updatedRows);
+
+      // Call backend to delete
+      fetch(`${baseURL}/audio/${itemToDelete.fileUrl}`, { method: "DELETE" });
       setItemToDelete(null);
     }
     setOpenConfirmDialog(false);
@@ -331,13 +343,42 @@ const DataTable = () => {
     });
   };
 
-  const handleDownloadSelected = () => {
-    (selectionModel as number[]).forEach((id) => {
-      const item = rows.find((row) => row.id === id);
-      if (item) {
-        window.open(item.fileUrl, "_blank");
+  const handleDownloadSelected = async () => {
+    const selectedFilenames = (selectionModel as number[])
+      .map((id) => {
+        const item = rows.find((row) => row.id === id);
+        return item ? item.fileUrl.split("/").pop() : null;
+      })
+      .filter(Boolean);
+
+    if (selectedFilenames.length > 0) {
+      try {
+        const response = await fetch(`${baseURL}/download`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ filenames: selectedFilenames }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Error: ${response.statusText}`);
+        }
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.setAttribute("download", "files.zip");
+        document.body.appendChild(link);
+        link.click();
+        link.parentNode.removeChild(link);
+      } catch (error) {
+        console.error("Download failed:", error.message);
       }
-    });
+    } else {
+      console.warn("No files selected for download.");
+    }
   };
 
   const handleEditSelected = () => {
@@ -488,7 +529,7 @@ const DataTable = () => {
       width: 150,
       sortable: false,
       renderCell: (params) => (
-        <div style={{ display: "flex", gap: "8px" }}>
+        <div style={{}}>
           <Tooltip title="Download">
             <HoverableIconButton
               onClick={() =>
@@ -532,203 +573,206 @@ const DataTable = () => {
   };
 
   return (
-    <Paper sx={{ height: 600, width: "100%", padding: "16px" }}>
-      <div style={{ display: "flex", alignContent: "flex-start" }}>
-        <SearchBar
-          label="Search"
-          variant="outlined"
-          value={searchTerm}
-          onChange={handleSearch}
-          fullWidth
-        />
-        {selectedCount > 0 && (
-          <Grow in={selectedCount > 0}>
-            <div
-              style={{
-                display: "flex",
-                gap: "2px",
-                marginLeft: "auto",
-                alignContent: "center",
-                padding: "8px",
-                height: "90%",
-              }}
-            >
-              <Tooltip title="Delete selected">
-                <HoverableIconButton
-                  onClick={handleDeleteSelected}
-                  color="error"
-                >
-                  <DeleteIcon />
-                </HoverableIconButton>
-              </Tooltip>
-              <Tooltip title="Download selected">
-                <HoverableIconButton onClick={handleDownloadSelected}>
-                  <DownloadIcon />
-                </HoverableIconButton>
-              </Tooltip>
-              <Tooltip title="Edit selected">
-                <HoverableIconButton onClick={handleEditSelected}>
-                  <EditIcon />
-                </HoverableIconButton>
-              </Tooltip>
-            </div>
-          </Grow>
-        )}
-      </div>
-
-      <DataGrid
-        rows={rows}
-        columns={columns}
-        pageSizeOptions={[5, 10]}
-        checkboxSelection
-        rowSelectionModel={selectionModel}
-        onRowSelectionModelChange={(newSelection) => {
-          setSelectionModel(newSelection);
-          setSelectedCount(newSelection.length); //TODO: It even fails when setting it to a constant???
-        }}
-        sortingOrder={["asc", "desc"]}
-        sortModel={sortModel}
-        onSortModelChange={(model) => setSortModel(model)}
-        onCellClick={(params, event) => handleCellClick(params, event)}
-        sx={{ border: 0, height: "80%" }}
-      />
-      <div style={{ marginBottom: "16px" }}>
-        <div style={{ display: "flex", gap: "8px" }}>
-          {filters.map((filter, index) => (
-            <Grow in={filters.length > 0}>
-              <HoverableChip
-                key={index}
-                label={
-                  `${
-                    filter.field === "artist"
-                      ? "Artist: "
-                      : filter.field === "bpm"
-                      ? "BPM: "
-                      : filter.field === "duration"
-                      ? "Duration: "
-                      : filter.field === "tags"
-                      ? "Tag: "
-                      : ""
-                  }` +
-                  `${
-                    typeof filter.value === "number"
-                      ? filter.value !== Math.round(filter.value)
-                        ? "~" + filter.value.toFixed(0) + "s"
-                        : "~" + filter.value
-                      : filter.value
-                  }`
-                }
-                onDelete={() => handleFilterDelete(filter)}
-                color="secondary"
-                variant="outlined"
-              />
+    <>
+      <Paper sx={{ height: 600, width: "100%", padding: "16px" }}>
+        <div style={{ display: "flex", flexDirection: "row" }}>
+          <SearchBar
+            label="Search"
+            variant="outlined"
+            value={searchTerm}
+            onChange={handleSearch}
+            fullWidth
+          />
+          {selectedCount > 0 && (
+            <Grow in={selectedCount > 0}>
+              <div
+                style={{
+                  display: "flex",
+                  gap: "2px",
+                  marginLeft: "auto",
+                  alignContent: "center",
+                  padding: "8px",
+                  height: "90%",
+                }}
+              >
+                <Tooltip title="Delete selected">
+                  <HoverableIconButton
+                    onClick={handleDeleteSelected}
+                    color="error"
+                  >
+                    <DeleteIcon />
+                  </HoverableIconButton>
+                </Tooltip>
+                <Tooltip title="Download selected">
+                  <HoverableIconButton onClick={handleDownloadSelected}>
+                    <DownloadIcon />
+                  </HoverableIconButton>
+                </Tooltip>
+                <Tooltip title="Edit selected">
+                  <HoverableIconButton onClick={handleEditSelected}>
+                    <EditIcon />
+                  </HoverableIconButton>
+                </Tooltip>
+              </div>
             </Grow>
-          ))}
+          )}
         </div>
-      </div>
-      <Dialog open={openEditDialog} onClose={handleCloseEditDialog}>
-        <DialogTitle>Edit Metadata</DialogTitle>
-        <DialogContent>
-          <TextField
-            margin="dense"
-            label="Title"
-            fullWidth
-            value={editingRow?.title || ""}
-            onChange={(e) => handleChange("title", e.target.value)}
-          />
-          <TextField
-            margin="dense"
-            label="Artist"
-            fullWidth
-            value={editingRow?.artist || ""}
-            onChange={(e) => handleChange("artist", e.target.value)}
-          />
-          <TextField
-            margin="dense"
-            label="BPM"
-            fullWidth
-            type="number"
-            value={editingRow?.bpm || ""}
-            onChange={(e) => handleChange("bpm", parseInt(e.target.value))}
-          />
-          <TextField
-            margin="dense"
-            label="Duration"
-            fullWidth
-            type="number"
-            value={editingRow?.duration || ""}
-            onChange={(e) =>
-              handleChange("duration", parseFloat(e.target.value))
-            }
-          />
-          <TextField
-            margin="dense"
-            label="Tags"
-            fullWidth
-            value={editingRow?.tags.join(", ") || ""}
-            onChange={(e) =>
-              handleChange(
-                "tags",
-                e.target.value
-                  .split(",")
-                  .map((tag) => tag.trim())
-                  .join(", ")
-              )
-            }
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseEditDialog}>Cancel</Button>
-          <Button onClick={handleSave} variant="contained">
-            Save
-          </Button>
-        </DialogActions>
-      </Dialog>
-      <Dialog open={openConfirmDialog} onClose={handleCancelDelete}>
-        <DialogTitle>Confirm Delete</DialogTitle>
-        <DialogContent>
-          <Typography>
-            {selectedCount > 0
-              ? `Are you sure you want to delete ${selectedCount} files?`
-              : "Are you sure you want to delete this item?"}
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCancelDelete}>Cancel</Button>
-          <Button
-            onClick={handleConfirmDelete}
-            color="error"
-            variant="contained"
-          >
-            Delete
-          </Button>
-        </DialogActions>
-      </Dialog>
-      <Dialog
-        open={openSampleViewDialog}
-        onClose={handleCloseSampleViewDialog}
-        fullWidth
-        maxWidth="sm"
-      >
-        <DialogTitle>
-          <Box
-            display="flex"
-            justifyContent="space-between"
-            alignItems="center"
-          >
-            <Typography align="center" variant="h6">
-              {fileTitle ?? ""}
+
+        <DataGrid
+          rows={rows}
+          columns={columns}
+          pageSizeOptions={[5, 10]}
+          checkboxSelection
+          rowSelectionModel={selectionModel}
+          onRowSelectionModelChange={(newSelection) => {
+            setSelectionModel(newSelection);
+            setSelectedCount(newSelection.length); //TODO: It even fails when setting it to a constant???
+          }}
+          sortingOrder={["asc", "desc"]}
+          sortModel={sortModel}
+          onSortModelChange={(model) => setSortModel(model)}
+          onCellClick={(params, event) => handleCellClick(params, event)}
+          sx={{ border: 0, height: "80%" }}
+        />
+        <div style={{ marginBottom: "16px" }}>
+          <div style={{ display: "flex", gap: "8px" }}>
+            {filters.map((filter, index) => (
+              <Grow in={filters.length > 0}>
+                <HoverableChip
+                  key={index}
+                  label={
+                    `${
+                      filter.field === "artist"
+                        ? "Artist: "
+                        : filter.field === "bpm"
+                        ? "BPM: "
+                        : filter.field === "duration"
+                        ? "Duration: "
+                        : filter.field === "tags"
+                        ? "Tag: "
+                        : ""
+                    }` +
+                    `${
+                      typeof filter.value === "number"
+                        ? filter.value !== Math.round(filter.value)
+                          ? () => {
+                              "~" + (filter.value as number).toFixed(2) + "s";
+                            }
+                          : "~" + filter.value
+                        : filter.value
+                    }`
+                  }
+                  onDelete={() => handleFilterDelete(filter)}
+                  color="secondary"
+                  variant="outlined"
+                />
+              </Grow>
+            ))}
+          </div>
+        </div>
+        <Dialog open={openEditDialog} onClose={handleCloseEditDialog}>
+          <DialogTitle>Edit Metadata</DialogTitle>
+          <DialogContent>
+            <TextField
+              margin="dense"
+              label="Title"
+              fullWidth
+              value={editingRow?.title || ""}
+              onChange={(e) => handleChange("title", e.target.value)}
+            />
+            <TextField
+              margin="dense"
+              label="Artist"
+              fullWidth
+              value={editingRow?.artist || ""}
+              onChange={(e) => handleChange("artist", e.target.value)}
+            />
+            <TextField
+              margin="dense"
+              label="BPM"
+              fullWidth
+              type="number"
+              value={editingRow?.bpm || ""}
+              onChange={(e) => handleChange("bpm", parseInt(e.target.value))}
+            />
+            <TextField
+              margin="dense"
+              label="Duration"
+              fullWidth
+              type="number"
+              value={editingRow?.duration || ""}
+              onChange={(e) =>
+                handleChange("duration", parseFloat(e.target.value))
+              }
+            />
+            <TextField
+              margin="dense"
+              label="Tags"
+              fullWidth
+              value={editingRow?.tags || ""}
+              onChange={(e) =>
+                handleChange(
+                  "tags",
+                  e.target.value.split(",").map((tag) => tag.trim())
+                  // .join(", ")
+                )
+              }
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleCloseEditDialog}>Cancel</Button>
+            <Button onClick={handleSave} variant="contained">
+              Save
+            </Button>
+          </DialogActions>
+        </Dialog>
+        <Dialog open={openConfirmDialog} onClose={handleCancelDelete}>
+          <DialogTitle>Confirm Delete</DialogTitle>
+          <DialogContent>
+            <Typography>
+              {selectedCount > 0
+                ? `Are you sure you want to delete ${selectedCount} files?`
+                : "Are you sure you want to delete this item?"}
             </Typography>
-            <IconButton edge="end" onClick={handleCloseSampleViewDialog}>
-              <CloseIcon />
-            </IconButton>
-          </Box>
-        </DialogTitle>
-        <DialogContent>
-          <SampleEdit filename={selectedFile?.file ?? ""} />
-        </DialogContent>
-      </Dialog>
-    </Paper>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleCancelDelete}>Cancel</Button>
+            <Button
+              onClick={handleConfirmDelete}
+              color="error"
+              variant="contained"
+            >
+              Delete
+            </Button>
+          </DialogActions>
+        </Dialog>
+        <Dialog
+          open={openSampleViewDialog}
+          onClose={handleCloseSampleViewDialog}
+          fullWidth
+          maxWidth="sm"
+        >
+          <DialogTitle>
+            <Box
+              display="flex"
+              justifyContent="space-between"
+              alignItems="center"
+            >
+              <Typography align="center" variant="h6">
+                {fileTitle ?? ""}
+              </Typography>
+              <IconButton edge="end" onClick={handleCloseSampleViewDialog}>
+                <CloseIcon />
+              </IconButton>
+            </Box>
+          </DialogTitle>
+          <DialogContent>
+            <SampleEdit filename={selectedFile?.file ?? ""} />
+          </DialogContent>
+        </Dialog>
+      </Paper>
+      <FileUpload />
+    </>
   );
 };
 

@@ -3,7 +3,7 @@ import React from "react";
 import { useDropzone } from "react-dropzone";
 import axios from "axios";
 
-const FileUpload: React.FC = () => {
+const FileUpload: React.FC = (style) => {
   const onDrop = (acceptedFiles: File[]) => {
     const formData = new FormData();
     acceptedFiles.forEach((file) => {
@@ -22,9 +22,11 @@ const FileUpload: React.FC = () => {
     <div
       {...getRootProps()}
       style={{
+        ...style,
         border: "2px dashed #cccccc",
-        padding: "20px",
+        padding: "3rem",
         cursor: "pointer",
+        margin: "20px auto",
       }}
     >
       <input {...getInputProps()} />

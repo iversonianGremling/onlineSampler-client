@@ -1,0 +1,24 @@
+# MVP
+[X] - Playing files
+[X] - Edit selected file's metadata
+[X] - Download selected file
+[X] - Delete selected file
+[X] - Upload a file
+[?] - Download a bunch of files
+[X] - Delete a bunch of files
+[-] - Upload a bunch of files
+[ ] - Edit a bunch of files' metadata
+
+# Nice addons
+[ ] - Add simple file metadata on upload (title and duration)
+[ ] - Add favorites
+[ ] - Add date of upload/last date modified
+[ ] - Add dark mode
+
+[ ] - Replace js with SQL?
+[ ] - Add folders functionality (CRUD)
+
+[ ] - Advanced metadata on upload (regex and bpm analysis)
+
+# Optional
+[ ] - AI assistant metadata on upload
