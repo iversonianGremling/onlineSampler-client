@@ -6,7 +6,7 @@
 [X] - Upload a file
 [?] - Download a bunch of files
 [X] - Delete a bunch of files
-[-] - Upload a bunch of files
+[?] - Upload a bunch of files
 [ ] - Edit a bunch of files' metadata
 
 # Nice addons

@@ -1,4 +1,3 @@
-// src/components/FileUpload.tsx
 import React from "react";
 import { useDropzone } from "react-dropzone";
 import axios from "axios";
@@ -7,9 +6,9 @@ const FileUpload: React.FC = (style) => {
   const onDrop = (acceptedFiles: File[]) => {
     const formData = new FormData();
     acceptedFiles.forEach((file) => {
-      formData.append("mp3", file);
+      formData.append("files", file); // Update field name to "files"
     });
-
+    console.log(formData);
     axios
       .post("http://localhost:3000/audio", formData)
       .then(() => alert("File uploaded successfully"))
